@@ -11,34 +11,33 @@
 }
 
 /* =========================================================================
-   LUCKY SPIN WHEEL (inline — HD premium realistic, no fullscreen modal)
+   LUCKY SPIN WHEEL (inline — matches app's sapphire + gold design)
    ========================================================================= */
 .wheel-wrap { display: flex; flex-direction: column; align-items: center; padding: 8px 0 4px; }
 .wheel-stage {
   position: relative; width: 280px; height: 280px; margin-bottom: 18px;
   display: grid; place-items: center;
 }
-/* Subtle ambient shadow (not a shiny glow) */
+/* Ambient shadow matching card shadow */
 .wheel-stage::before {
-  content: ""; position: absolute; inset: -8px; border-radius: 50%;
+  content: ""; position: absolute; inset: -6px; border-radius: 50%;
   background: radial-gradient(circle, rgba(0, 0, 0, 0.3), transparent 65%);
-  filter: blur(8px); z-index: 0;
+  filter: blur(6px); z-index: 0;
 }
 .wheel {
   position: relative; z-index: 1;
   width: 100%; height: 100%; border-radius: 50%;
-  /* No CSS transition — animation handled by requestAnimationFrame in play.js */
-  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
 }
-/* Decorative stud ring around the wheel (copper dots, not glowing) */
+/* Gold stud bezel ring — matches app's --gold-1 accent */
 .wheel-bezel {
   position: absolute; inset: 0; z-index: 2; pointer-events: none;
   border-radius: 50%;
 }
 .wheel-bezel i {
   position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; margin: -2px;
-  border-radius: 50%; background: #e0a25b;
-  box-shadow: 0 0 3px rgba(224, 162, 91, 0.4);
+  border-radius: 50%; background: var(--gold-1);
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.4);
 }
 .wheel-pointer {
   position: absolute; top: -6px; left: 50%; transform: translateX(-50%); z-index: 4;
@@ -46,31 +45,26 @@
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.7));
 }
 .wheel-pointer svg { width: 100%; height: 100%; }
+/* Hub — matches app's card style: sapphire gradient + gold border + gold text */
 .wheel-hub {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3;
   width: 60px; height: 60px; border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #1e3a5f, #0a1628);
-  border: 2px solid #e0a25b; display: grid; place-items: center;
-  font-family: var(--font-display); font-weight: 700; font-size: 11px; color: #e0a25b;
+  background: var(--grad-card);
+  border: 2px solid var(--gold-2); display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 11px; color: var(--gold-1);
   letter-spacing: 0.08em;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(96, 165, 250, 0.15),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-md), inset 0 1px 0 var(--edge-hi);
   cursor: pointer; user-select: none;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.15s var(--ease-spring), box-shadow 0.15s;
 }
 .wheel-hub:hover {
   transform: translate(-50%, -50%) scale(1.05);
-  box-shadow:
-    0 6px 16px rgba(224, 162, 91, 0.3),
-    inset 0 1px 0 rgba(96, 165, 250, 0.2),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg), var(--shadow-gold), inset 0 1px 0 var(--edge-hi);
 }
 .wheel-hub:active { transform: translate(-50%, -50%) scale(0.96); }
 .wheel-hub::after {
   content: ""; position: absolute; inset: 4px; border-radius: 50%;
-  border: 1px solid rgba(224, 162, 91, 0.3);
+  border: 1px solid rgba(251, 191, 36, 0.3);
   pointer-events: none;
 }
 

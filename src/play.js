@@ -26,10 +26,11 @@ let wheelRot = 0;
 let spinning = false;
 
 /**
- * Build the inline wheel SVG — unique premium multi-color design.
- * Each segment has its own distinct color (sapphire, copper, deep teal,
- * burgundy, etc.) with radial gradient shading for a 3D domed look.
- * Copper rim with minted edge texture. Custom Orael-branded aesthetic.
+ * Build the inline wheel SVG — matches the app's design language.
+ * Uses the SAME sapphire card colors (--bg-2 / --bg-3) as the rest of
+ * the app, with gold accents (--gold-1/2/3) for the rim, dividers, and
+ * jackpot labels. Alternating dark/light sapphire segments keep it
+ * readable without looking like a casino wheel. Clean, flat, premium.
  * Called on boot.
  */
 export function buildWheel() {
@@ -41,54 +42,34 @@ export function buildWheel() {
   const seg = 360 / n;
   const cx = 100, cy = 100, r = 92;
 
-  // Unique color palette — each segment gets its own distinct color
-  // Premium jewel tones: deep sapphire, copper, teal, burgundy, forest, plum, amber, charcoal
-  const segmentColors = [
-    { fill: '#1e3a5f', light: '#2e5a8f', label: '#fde68a' },  // deep sapphire
-    { fill: '#7c2d12', light: '#b45309', label: '#fde68a' },  // copper
-    { fill: '#0f4a3f', light: '#1a6b5a', label: '#fde68a' },  // deep teal
-    { fill: '#3b1a3b', light: '#5c2a5c', label: '#94a3b8' },  // deep plum (MISS)
-    { fill: '#1e3a5f', light: '#2e5a8f', label: '#fde68a' },  // deep sapphire
-    { fill: '#7c2d12', light: '#b45309', label: '#fde68a' },  // copper
-    { fill: '#4a1a1a', light: '#7c2a2a', label: '#fbbf24' },  // burgundy (jackpot)
-    { fill: '#0f4a3f', light: '#1a6b5a', label: '#fde68a' },  // deep teal
-  ];
+  // Segment colors — match the app's card palette exactly
+  // --bg-2: #161c2c (card), --bg-3: #1e2538 (card hover)
+  // Alternating for subtle contrast, NOT multi-color
+  const segDark = '#141a2a';   // matches --bg-1 (darker card)
+  const segLight = '#1e2538';  // matches --bg-3 (lighter card)
 
   let html = '';
 
-  // ── Defs: gradients ────────────────────────────────────────────
-  // Copper rim gradient (brushed metal look)
+  // ── Defs ───────────────────────────────────────────────────────
   html += `<defs>
-    <linearGradient id="copperRim" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#5c2a0c"/>
-      <stop offset="0.25" stop-color="#e0a25b"/>
-      <stop offset="0.5" stop-color="#fde68a"/>
-      <stop offset="0.75" stop-color="#e0a25b"/>
-      <stop offset="1" stop-color="#5c2a0c"/>
-    </linearGradient>`;
-
-  // Radial gradient for each segment (3D domed effect)
-  for (let i = 0; i < n; i++) {
-    const c = segmentColors[i % segmentColors.length];
-    html += `<radialGradient id="seg${i}" cx="0.5" cy="0.35" r="0.7">
-      <stop offset="0" stop-color="${c.light}"/>
-      <stop offset="0.6" stop-color="${c.fill}"/>
-      <stop offset="1" stop-color="${c.fill}" stop-opacity="0.85"/>
-    </radialGradient>`;
-  }
-
-  // Inner shine overlay (subtle, not glossy)
-  html += `<radialGradient id="wheelShine" cx="0.5" cy="0.3" r="0.5">
-    <stop offset="0" stop-color="rgba(255,255,255,0.10)"/>
-    <stop offset="0.6" stop-color="rgba(255,255,255,0)"/>
-    <stop offset="1" stop-color="rgba(0,0,0,0.3)"/>
-  </radialGradient>
+    <!-- Gold rim gradient — matches .btn-primary gradient -->
+    <linearGradient id="wheelRim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="0.5" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#d97706"/>
+    </linearGradient>
+    <!-- Subtle top highlight for segments (matches card inset shadow) -->
+    <radialGradient id="segHighlight" cx="0.5" cy="0.25" r="0.6">
+      <stop offset="0" stop-color="rgba(255,255,255,0.06)"/>
+      <stop offset="0.6" stop-color="rgba(255,255,255,0)"/>
+      <stop offset="1" stop-color="rgba(0,0,0,0.2)"/>
+    </radialGradient>
   </defs>`;
 
-  // ── Outer copper rim (thick, brushed) ──────────────────────────
-  html += `<circle cx="${cx}" cy="${cy}" r="${r + 6}" fill="none" stroke="url(#copperRim)" stroke-width="7"/>`;
-  // Dark inner edge of rim (depth)
-  html += `<circle cx="${cx}" cy="${cy}" r="${r + 2}" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>`;
+  // ── Gold rim (matches .btn-primary style) ──────────────────────
+  html += `<circle cx="${cx}" cy="${cy}" r="${r + 5}" fill="none" stroke="url(#wheelRim)" stroke-width="5"/>`;
+  // Subtle dark inner edge for depth
+  html += `<circle cx="${cx}" cy="${cy}" r="${r + 2}" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1"/>`;
 
   // ── Segments ───────────────────────────────────────────────────
   for (let i = 0; i < n; i++) {
@@ -97,56 +78,45 @@ export function buildWheel() {
     const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
     const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
 
-    // Segment with radial gradient fill (3D domed look)
-    html += `<path d="M${cx},${cy} L${x0},${y0} A${r},${r} 0 0 1 ${x1},${y1} Z" fill="url(#seg${i})"/>`;
+    // Alternating sapphire shades — matches the app's card palette
+    const fill = i % 2 === 0 ? segLight : segDark;
+    html += `<path d="M${cx},${cy} L${x0},${y0} A${r},${r} 0 0 1 ${x1},${y1} Z" fill="${fill}"/>`;
 
-    // Divider line — copper, embossed
-    html += `<line x1="${cx}" y1="${cy}" x2="${x0}" y2="${y0}" stroke="#e0a25b" stroke-width="0.8" opacity="0.4"/>`;
+    // Subtle highlight overlay (matches card inset shadow)
+    html += `<path d="M${cx},${cy} L${x0},${y0} A${r},${r} 0 0 1 ${x1},${y1} Z" fill="url(#segHighlight)" pointer-events="none"/>`;
+
+    // Divider line — gold, subtle (matches --line-strong opacity)
+    html += `<line x1="${cx}" y1="${cy}" x2="${x0}" y2="${y0}" stroke="rgba(251,191,36,0.18)" stroke-width="0.6"/>`;
 
     // Label
     const am = (a0 + a1) / 2;
-    const tx = cx + r * 0.63 * Math.cos(am);
-    const ty = cy + r * 0.63 * Math.sin(am);
+    const tx = cx + r * 0.62 * Math.cos(am);
+    const ty = cy + r * 0.62 * Math.sin(am);
     const rot = (i * seg) + (seg / 2);
     const prize = prizes[i];
     const big = prize >= 300;
     const label = prize === 0 ? 'MISS' : prize;
 
-    // Text styling — white/cream for readability on colored segments
+    // Text — matches app typography: gold for jackpots, soft gold for regular, muted for MISS
     let labelColor, fontSize, fontWeight;
     if (prize === 0) {
-      labelColor = '#94a3b8'; fontSize = 11; fontWeight = 600;
+      labelColor = '#64748b'; fontSize = 11; fontWeight = 600;  // --ink-faint
     } else if (big) {
-      labelColor = '#fbbf24'; fontSize = 15; fontWeight = 800;
+      labelColor = '#fbbf24'; fontSize = 15; fontWeight = 800;  // --gold-1
     } else {
-      labelColor = '#fde68a'; fontSize = 13; fontWeight = 700;
+      labelColor = '#fde68a'; fontSize = 13; fontWeight = 700;  // soft gold
     }
 
-    html += `<text x="${tx}" y="${ty}" fill="${labelColor}" font-size="${fontSize}" font-family="Space Grotesk" font-weight="${fontWeight}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rot} ${tx} ${ty})" style="letter-spacing:0.03em; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6))">${label}</text>`;
-
-    // Decorative dots near the outer edge
-    const dx = cx + r * 0.86 * Math.cos(am);
-    const dy = cy + r * 0.86 * Math.sin(am);
-    if (prize >= 300) {
-      // Jackpot — gold star dot
-      html += `<circle cx="${dx}" cy="${dy}" r="2" fill="#fbbf24" opacity="0.9"/>`;
-    } else if (prize >= 100) {
-      html += `<circle cx="${dx}" cy="${dy}" r="1.5" fill="#fde68a" opacity="0.7"/>`;
-    } else if (prize > 0) {
-      html += `<circle cx="${dx}" cy="${dy}" r="1" fill="#e0a25b" opacity="0.5"/>`;
-    }
+    html += `<text x="${tx}" y="${ty}" fill="${labelColor}" font-size="${fontSize}" font-family="Space Grotesk" font-weight="${fontWeight}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rot} ${tx} ${ty})" style="letter-spacing:0.03em">${label}</text>`;
   }
 
-  // ── Top shine overlay (3D dome across entire wheel) ────────────
-  html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#wheelShine)" pointer-events="none"/>`;
-
-  // ── Inner dark ring (recess before hub) ────────────────────────
-  html += `<circle cx="${cx}" cy="${cy}" r="24" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="2"/>`;
-  html += `<circle cx="${cx}" cy="${cy}" r="23" fill="none" stroke="#e0a25b" stroke-width="0.5" opacity="0.3"/>`;
+  // ── Inner ring (dark recess, matches card inset) ───────────────
+  html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>`;
+  html += `<circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>`;
 
   svg.innerHTML = html;
 
-  // Build the copper stud bezel ring (16 dots) on the inline wheel
+  // Build the gold stud bezel ring (16 dots) — matches app's gold accent
   const bezel = document.querySelector('.wheel-bezel');
   if (bezel && bezel.innerHTML === '') {
     let dots = '';

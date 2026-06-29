@@ -170,3 +170,22 @@
   color: var(--gold-1);
   margin-bottom: 8px;
 }
+
+/* ── Transaction details modal — flex layout, sticky close button ── */
+.tx-details-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 56px) !important;
+  overflow: hidden !important; /* content scrolls, not the modal itself */
+}
+.tx-details-modal #txDetailsContent {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+  min-height: 0; /* critical for flex children to scroll */
+  padding-right: 4px; /* breathing room for scrollbar */
+}
+.tx-details-modal #txDetailsClose {
+  flex-shrink: 0; /* Close button never gets squished */
+  margin-top: 8px;
+}

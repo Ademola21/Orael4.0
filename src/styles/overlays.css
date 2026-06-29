@@ -48,6 +48,7 @@
 .modal-veil {
   position: fixed; inset: 0; z-index: 65; display: none; align-items: center; justify-content: center;
   background: rgba(10, 14, 26, 0.84); backdrop-filter: blur(8px); padding: 28px; animation: fade 0.3s ease;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 .modal-veil.show { display: flex; }
 .modal {
@@ -55,6 +56,9 @@
   background: var(--grad-card);
   border: 1px solid var(--line-strong); border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg); animation: rise 0.5s var(--ease-spring);
+  max-height: calc(100vh - 56px); /* fit within viewport with padding */
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  margin: auto; /* center vertically even when scrolling */
 }
 .modal .m-burst {
   width: 70px; height: 70px; margin: 0 auto 14px; color: var(--gold-1);

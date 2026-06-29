@@ -97,18 +97,41 @@ function animateWheel(prizeIndex, prizeAmount) {
   wheelRot += 360 * 6 + delta;
 
   const wheelEl = $('wheelModal');
-  if (wheelEl) {
-    wheelEl.style.transition = 'transform 4.6s cubic-bezier(0.16, 0.92, 0.18, 1)';
-    wheelEl.style.transform = `rotate(${wheelRot}deg)`;
-  }
-
   const closeBtn = $('spinCloseBtn');
   if (closeBtn) closeBtn.style.display = 'none';
+
+  if (wheelEl) {
+    // SVG elements need special handling for CSS transitions. Setting
+    // transition + transform in the same frame causes the browser to jump
+    // to the final position with no animation. We need to:
+    // 1. Disable the transition
+    // 2. Force a reflow (getBoundingClientRect works for SVG, offsetWidth doesn't)
+    // 3. In the next frame, re-enable the transition
+    // 4. In the frame after THAT, set the new transform
+    wheelEl.style.transition = 'none';
+    wheelEl.getBoundingClientRect(); // force reflow (works for SVG elements)
+
+    requestAnimationFrame(() => {
+      wheelEl.style.transition = 'transform 4.6s cubic-bezier(0.16, 0.92, 0.18, 1)';
+      // Second rAF ensures the browser registers the transition BEFORE
+      // the transform changes, so it actually animates
+      requestAnimationFrame(() => {
+        wheelEl.style.transform = `rotate(${wheelRot}deg)`;
+      });
+    });
+  }
 
   setTimeout(() => {
     spinning = false;
     if (wheelEl) wheelEl.style.transition = '';
     if (closeBtn) closeBtn.style.display = '';
+
+    // Restore spin button
+    const spinModalBtnEl = $('spinModalBtn');
+    if (spinModalBtnEl) {
+      spinModalBtnEl.disabled = false;
+      spinModalBtnEl.textContent = 'Spin the wheel';
+    }
 
     const spinVeil = $('spinVeil');
     if (spinVeil) spinVeil.classList.remove('show');
@@ -120,7 +143,7 @@ function animateWheel(prizeIndex, prizeAmount) {
       toast('So close', 'No win this time');
     }
     render();
-  }, 4750);
+  }, 4900);
 }
 
 /* ========================================================================
@@ -335,13 +358,29 @@ export function setupPlay() {
 
   const triggerModalSpin = () => {
     if (spinning) return;
+    // Show immediate visual feedback on the button so the user knows
+    // the spin is coming (the API call takes ~200ms)
+    if (spinModalBtn) {
+      spinModalBtn.disabled = true;
+      spinModalBtn.textContent = 'Spinning…';
+    }
     const doSpin = async () => {
       try {
         const res = await api('/api/play/spin', { method: 'POST' });
         updateState(res);
-        buildWheel();
+        // Note: buildWheel() is NOT called here — it was already called
+        // when the modal opened, and calling it again right before
+        // animateWheel() causes a race condition where the browser skips
+        // the CSS transition (innerHTML change + transition + transform
+        // all in one frame = no animation).
         animateWheel(res.prizeIndex ?? 0, res.prizeAmount ?? 0);
-      } catch (e) { /* handled */ }
+      } catch (e) {
+        // Restore button on error
+        if (spinModalBtn) {
+          spinModalBtn.disabled = false;
+          spinModalBtn.textContent = 'Spin the wheel';
+        }
+      }
     };
     playAd('Loading spin…', 'Watch an ad to spin the wheel.', 10, doSpin);
   };

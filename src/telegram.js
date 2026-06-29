@@ -42,7 +42,7 @@ export function initTelegram() {
 
 /**
  * Check whether we're running inside a real Telegram WebApp environment.
- * Returns true only if initData exists and is non-empty.
+ * Returns true if initData exists (real Telegram OR the devmock shim).
  *
  * @returns {boolean}
  */

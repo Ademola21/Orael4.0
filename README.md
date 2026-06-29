@@ -1,91 +1,105 @@
-# Orael — Telegram Mini App
+# Orael — Frontend Only (Mock Data Mode)
 
 AI mining faucet. Users trade attention (rewarded ads) for mining energy.
 "Refuel-to-Mine" loop: a virtual engine mines ORL for 3 hours, then runs out
 of fuel; one rewarded ad refuels it to 100%. Optional ad unlocks a 1.2× boost.
 
-**Live:** https://yorubacinemax.xyz
+> **This fork has the backend removed.** All `/api/*` calls are intercepted
+> by a mock layer (`src/api.js`) backed by `localStorage`. The Telegram WebApp
+> SDK and Adsgram SDK are mocked by `src/devmock.js` so the app boots in any
+> browser — no Telegram, no server, no database required.
 
-## Design
+## Live Demo
 
-"Engine room" language — warm near-black surfaces, a single machined-copper
-accent, analog instrument gauge, tactile cards, fine grain. No neon, no rainbow
-gradients. Built to read as premium fintech, not a casino tap-game.
+**https://ademola21.github.io/Orael-frontend/**
 
-## Economy Model
+## What's Kept
 
-All reward values are calibrated against **real Adsgram CPM data ($2.24)** and
-locked to a 65%+ gross margin. See:
-- **`ECONOMY_CALCULATIONS.md`** — per-feature reward breakdown with proof math
-- **`FINANCIAL_MODEL.md`** — full production financial model + revenue projections
+- Full single-page UI shell (`index.html`) with all 4 screens:
+  Miner · Play · Earn · Wallet
+- All frontend logic in `src/` — state management, animations, toasts,
+  tutorial onboarding, tier modal, profile/avatar picker, scratch canvas,
+  coin flip 3D animation, etc.
+- The "Engine Room" sapphire + gold design system in `src/styles/`
+- 10 default avatar PNGs in `public/avatars/` + device upload support
 
-### Monetization (what pays you)
-1. ✅ **Adsgram rewarded video** (block 35273) — used by Refuel, Boost, Spin,
-   Scratch, Chest, Faucet, Task verification
-2. ✅ **Adsgram Tasks** web component (block task-35279) — task-wall with
-   server-to-server crediting via `/api/adsgram-callback`
-3. ✅ **Telegram Stars** — Orael Pro subscription (250 XTR/mo ≈ $3.25/mo)
+## What's Removed
 
-> ❌ Offerwalls (Mmwall, ayeT-Studios, BitcoTasks) were removed — they don't
-> support Telegram Mini Apps.
+- `server/` — entire Express + SQLite backend
+- `public/admin.{html,js}` — admin panel
+- `src/admin.js` + `src/styles/admin.css` — admin frontend
+- `Dockerfile`, `docker-compose*.yml`, `Caddyfile*`, `install.sh` — deployment
+- `AUDIT.md`, `ECONOMY_CALCULATIONS.md`, `FINANCIAL_MODEL.md`, `SCALING.md` — backend docs
+- `better-sqlite3`, `compression`, `cors`, `dotenv`, `express`, `multer`, `concurrently` — backend deps
+- Vite `/api` proxy
 
-## Architecture
+## Mock Data Layer
+
+`src/api.js` exports the same `api(path, options)` signature as the original,
+so the rest of the frontend code is unchanged. Behavior:
+
+- State persisted to `localStorage` under `orael_mock_state`
+- Mining accrues passively between calls (mirrors the real server)
+- Game outcomes (spin, scratch, chest, coinflip) randomized client-side
+  using the same weighted arrays as the real server
+- Returns the full `ECONOMY_CONFIG` so the frontend's economy-aware code
+  (wheel prizes, coinflip payouts, lotto ticket price, etc.) works unmodified
+- Mock user: `Ademola` (id `10042024`) — edit in `src/devmock.js`
+- Mock banks list: 34 Nigerian banks returned by `/api/wallet/banks`
+- Saved bank accounts persisted separately under `orael_mock_bank_accounts`
+- Avatar uploads intercepted by `devmock.js` and stored as data URLs
+
+To reset mock state, run in the browser console:
+
+```js
+localStorage.removeItem('orael_mock_state');
+localStorage.removeItem('orael_mock_bank_accounts');
+location.reload();
+```
+
+## Mock Telegram + Adsgram
+
+`src/devmock.js` installs a mock `window.Telegram.WebApp` and `window.Adsgram`
+so the app boots in any browser. The mock Adsgram resolves `show()` after 1.2s
+with `{ done: true }` so all ad-gated actions work. If running inside real
+Telegram with real initData, the mocks are skipped.
+
+## Architecture (Frontend-Only)
 
 ```
 Orael/
-├── index.html              # Single-page app shell (4 screens)
-├── src/                    # Frontend (vanilla JS + Vite)
+├── index.html              # Single-page app shell (4 screens + splash)
+├── src/
 │   ├── main.js             # Boot sequence + render loops
-│   ├── api.js              # Fetch wrapper (attaches Telegram initData)
+│   ├── api.js              # ⭐ Mock API layer (localStorage-backed)
+│   ├── devmock.js          # ⭐ Telegram + Adsgram mock (always on)
 │   ├── state.js            # State store + localStorage cache
-│   ├── telegram.js         # Telegram WebApp SDK wrapper
+│   ├── telegram.js         # Telegram SDK wrapper
 │   ├── ui.js               # Master render() — runs every second
 │   ├── ads.js              # Adsgram rewarded ad player
-│   ├── mining.js / play.js / earn.js / wallet.js
-│   └── styles/             # 8 CSS files — "Engine Room" design system
-├── server/                 # Express.js backend
-│   ├── index.js            # Express app + Adsgram callback endpoint
-│   ├── bot.js              # Telegram bot (long-polling, Pro payments)
-│   ├── db.js               # SQLite schema + helpers + lottery drawing
-│   ├── auth.js             # Telegram initData HMAC verification
-│   ├── economy.js          # All economy constants (single source of truth)
-│   ├── middleware/rateLimit.js
-│   ├── routes/             # user, mining, play, earn, wallet, leaderboard
-│   └── services/           # mining accrual, 2-tier referral commission
-├── data/orael.db           # SQLite database (gitignored in production)
-├── ECONOMY_CALCULATIONS.md # Per-feature reward math (transparent)
-└── FINANCIAL_MODEL.md      # Full production financial model
+│   ├── animations.js       # Confetti, ripples, count-up, parallax
+│   ├── mining.js           # Refuel / Boost / Rig upgrade
+│   ├── play.js             # Spin / Scratch / Coin Flip / Chest / Lottery
+│   ├── earn.js             # Tasks / Streak / Faucet / Referral
+│   ├── wallet.js           # Withdraw / Pro / PIN / Bank selection
+│   ├── profile.js          # Avatar picker + Pro subscription
+│   ├── tutorial.js         # Onboarding flow
+│   └── styles/             # 10 CSS files — sapphire + gold design
+├── public/
+│   ├── avatars/            # 10 default avatar PNGs
+│   └── telegram-web-app.js # Local copy of Telegram SDK
+└── vite.config.js          # Vite (no proxy, base path for GitHub Pages)
 ```
-
-## The Four Screens
-
-1. **Miner** — Balance card + hourly faucet + analog engine gauge + Refuel /
-   Boost buttons + Mining rig upgrade (Rig I → V)
-2. **Play** — Lucky Spin, Scratch & Win (3/day), Mystery Chest (5 ads), Daily
-   Lottery, Weekly Leaderboard
-3. **Earn** — Adsgram Tasks widget + Daily streak (7 days) + Watch & Earn tasks
-   + Featured partners + Invite (10% L1 / 3% L2 referral)
-4. **Wallet** — Withdrawal UI (Bank NGN / USDT) + Orael Pro subscription via
-   Telegram Stars
 
 ## Development
 
 ```bash
 npm install
-npm run dev      # Start server + Vite client + Telegram bot (concurrent)
+npm run dev      # Start Vite dev server at http://localhost:5173
 npm run build    # Production build → dist/
-npm start        # Production server + bot
+npm run preview  # Preview the production build
 ```
 
-## Environment Variables
-
-```
-BOT_TOKEN=                  # From @BotFather
-PORT=3000                   # Server port
-NODE_ENV=development
-DOMAIN=https://yourdomain.com
-VITE_ADSGRAM_BLOCK_ID=35273
-VITE_ADSGRAM_TASK_BLOCK_ID=task-35279
-ADSGRAM_SECRET=             # From Adsgram dashboard (for callback verification)
-```
-
+No environment variables required for mock mode. The app boots straight
+into the splash → Miner screen with a mock user (`Ademola`, 18,750 ORL
+starting balance) and works end-to-end.

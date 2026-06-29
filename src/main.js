@@ -1,4 +1,4 @@
-import './devmock.js'; // side-effect: installs Telegram WebApp mock in DEV_MODE (must run first)
+import './devmock.js'; // side-effect: installs Telegram WebApp mock + Adsgram mock in any browser
 import { initTelegram, isTelegramEnv } from './telegram.js';
 import { api } from './api.js';
 import { updateState, setLocal, loadCachedState, getState } from './state.js';
@@ -8,7 +8,6 @@ import { buildWheel, setupPlay, renderLeaderboard, isGameActive } from './play.j
 import { setupEarn, renderTasks, renderStreak } from './earn.js';
 import { setupWallet } from './wallet.js';
 import { setupProfile } from './profile.js';
-import { setupAdmin } from './admin.js';
 import { setupTutorial } from './tutorial.js';
 import {
   checkBalanceAnimation,
@@ -23,7 +22,6 @@ import {
 
 import './styles/index.css';
 import './styles/profile.css';
-import './styles/admin.css';
 
 function hideSplash() {
   const splash = document.getElementById('splash-screen');
@@ -138,7 +136,6 @@ async function boot() {
   setupEarn();
   setupWallet();
   setupProfile();
-  setupAdmin();
 
   // 5. Initial render
   render();

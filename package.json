@@ -1,35 +1,15 @@
 {
-  "name": "orael",
+  "name": "orael-frontend",
   "version": "3.1.0",
   "private": true,
   "type": "module",
+  "description": "Orael Telegram Mini App — frontend-only with mock data layer",
   "scripts": {
-    "dev:server": "node --watch server/index.js",
-    "dev:client": "vite",
+    "dev": "vite",
     "build": "vite build",
-    "dev": "vite build && concurrently -k -n server,watch \"NODE_ENV=production node server/index.js 2>&1 | tee dev.log\" \"vite build --watch\"",
-    "start:server": "node server/index.js",
-    "start:bot": "node server/bot.js",
-    "start": "concurrently -n server,bot -c blue,yellow \"npm:start:server\" \"npm:start:bot\"",
-    "preview": "vite preview",
-    "lint": "echo 'lint skipped (vanilla JS)'",
-    "db:push": "echo 'Orael uses sql.js — schema auto-created on server start'",
-    "docker:build": "docker compose build",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f",
-    "docker:rebuild": "docker compose up -d --build"
-  },
-  "dependencies": {
-    "better-sqlite3": "^12.11.1",
-    "compression": "^1.8.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "multer": "^1.4.5-lts.1"
+    "preview": "vite preview"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
     "vite": "^6.3.5"
   }
 }

@@ -201,7 +201,7 @@ function renderAdsgramTasks() {
     return;
   }
 
-  const isDebug = import.meta.env.DEV ? 'true' : 'false';
+  const isDebug = (import.meta.env.VITE_DEV_MODE === 'true' || import.meta.env.DEV) ? 'true' : 'false';
 
   const taskEl = document.createElement('adsgram-task');
   taskEl.setAttribute('data-block-id', blockId);

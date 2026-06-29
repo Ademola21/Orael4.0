@@ -4,7 +4,7 @@
 #  Replace `yorubacinemax.xyz` with your actual domain.
 # ─────────────────────────────────────────────────────────────
 
-yorubacinemax.xyz {
+orael.yorubacinemax.xyz {
     # Rate limiting (basic, per-IP)
     # For production-grade rate limiting, use Caddy's rate-limit module or a
     # dedicated WAF.

@@ -428,7 +428,19 @@ router.post('/withdraw', async (req, res) => {
     const maxDaily = parseInt(process.env.MAX_DAILY_WITHDRAWAL_ORL) || 500000;
     const maxMonthly = parseInt(process.env.MAX_MONTHLY_WITHDRAWAL_ORL) || 5000000;
 
-    const amountOrl = Math.floor(user.balance);
+    const amountInput = parseInt(req.body.amount);
+    const amountOrl = amountInput ? Math.floor(amountInput) : Math.floor(user.balance);
+
+    if (isNaN(amountOrl) || amountOrl <= 0) {
+      return res.status(400).json({ error: 'Invalid withdrawal amount' });
+    }
+    if (amountOrl < minOrl) {
+      return res.status(400).json({ error: `Minimum withdrawal is ${minOrl} ORL` });
+    }
+    if (amountOrl > user.balance) {
+      return res.status(400).json({ error: `Maximum withdrawal is ${Math.floor(user.balance)} ORL` });
+    }
+
     if (amountOrl > maxSingle) {
       return res.status(400).json({ error: `Maximum single withdrawal is ${maxSingle.toLocaleString()} ORL` });
     }
@@ -488,7 +500,7 @@ router.post('/withdraw', async (req, res) => {
         bankAccount = { account_number: accountNumber, account_bank: bankCode, bank_code: bankCode, bank_name: bankName, account_name: accountName };
       }
 
-      const netNgn = Math.floor(netOrl * E.ORL_TO_NGN);
+      const netNgn = Math.round(netOrl * E.ORL_TO_NGN);
       if (netNgn < 100) {
         return res.status(400).json({ error: 'Net amount too small for bank transfer (min ₦100)' });
       }
@@ -529,7 +541,7 @@ router.post('/withdraw', async (req, res) => {
       }
       const normalizedPhone = normalizeNgPhone(phone);
 
-      const netNgn = Math.floor(netOrl * E.ORL_TO_NGN);
+      const netNgn = Math.round(netOrl * E.ORL_TO_NGN);
       if (netNgn < 50) {
         return res.status(400).json({ error: 'Net amount too small for airtime (min ₦50)' });
       }
@@ -614,7 +626,7 @@ router.post('/withdraw', async (req, res) => {
     unlockAchievement(user.id, 'first_withdrawal');
 
     /* ── Log transaction + audit ── */
-    addTransaction(user.id, 'withdraw', -amountOrl, `Withdrawal via ${methodConfig.name} (${netFiat})`);
+    addTransaction(user.id, 'withdraw', -amountOrl, `Withdrawal via ${methodConfig.name} (${netFiat})`, withdrawalId);
     logAudit(user.id, 'user', 'withdrawal_request', user.id, {
       withdrawal_id: withdrawalId,
       method: methodKey,
@@ -700,7 +712,7 @@ export async function handleFlutterwaveWebhook(req, res) {
 
       if (transferStatus === 'SUCCESSFUL') {
         updateWithdrawalStatusById(withdrawal.id, 'completed', data.complete_message || null);
-        addTransaction(withdrawal.user_id, 'withdraw_completed', 0, `Withdrawal #${withdrawal.id} completed via Flutterwave`);
+        addTransaction(withdrawal.user_id, 'withdraw_completed', 0, `Withdrawal #${withdrawal.id} completed via Flutterwave`, withdrawal.id);
         logAudit(null, 'system', 'withdrawal_completed', withdrawal.user_id, {
           withdrawal_id: withdrawal.id,
           flw_reference: flwReference,
@@ -719,7 +731,7 @@ export async function handleFlutterwaveWebhook(req, res) {
         const user = getUserById(withdrawal.user_id);
         if (user) {
           updateUser(user.id, { balance: user.balance + withdrawal.amount_orl });
-          addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${withdrawal.id} failed — refunded`);
+          addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${withdrawal.id} failed — refunded`, withdrawal.id);
           await notifyWithdrawalFailed(user.telegram_id, withdrawal.amount_orl, data.complete_message);
         }
         logAudit(null, 'system', 'withdrawal_failed', withdrawal.user_id, {
@@ -746,7 +758,7 @@ export async function handleFlutterwaveWebhook(req, res) {
           const user = getUserById(withdrawal.user_id);
           if (user) {
             updateUser(user.id, { balance: user.balance + withdrawal.amount_orl });
-            addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Airtime #${withdrawal.id} failed — refunded`);
+            addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Airtime #${withdrawal.id} failed — refunded`, withdrawal.id);
           }
         }
       }

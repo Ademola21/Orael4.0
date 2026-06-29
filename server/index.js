@@ -44,6 +44,13 @@ app.post('/api/flutterwave-webhook', handleFlutterwaveWebhook);
 // Body parsing middleware — 10kb limit to prevent abuse
 app.use(express.json({ limit: '10kb' }));
 
+// Client-side logs (temporary for debugging)
+app.post('/api/log', (req, res) => {
+  console.log(`\x1b[31m[CLIENT LOG] [${req.body?.level || 'info'}] ${req.body?.message || ''}\x1b[0m`);
+  if (req.body?.stack) console.log(`\x1b[33m${req.body.stack}\x1b[0m`);
+  res.json({ ok: true });
+});
+
 // SCALABILITY: Compress all JSON / HTML / CSS / JS responses. At 1M users,
 // uncompressed API responses waste ~70% bandwidth. gzip gives 5-10x reduction
 // for JSON with negligible CPU cost (streamed, native zlib).
@@ -60,8 +67,12 @@ app.use(compression({
 // ─── Security: HTTPS redirect (production only, skipped in DEV_MODE) ────
 if (process.env.NODE_ENV === 'production' && process.env.DEV_MODE !== 'true') {
   app.use((req, res, next) => {
-    // Allow webhook endpoints to skip HTTPS redirect (Flutterwave may POST over HTTP from some regions)
-    if (req.path === '/api/flutterwave-webhook' || req.path === '/api/adsgram-callback') {
+    // Allow webhook and healthcheck endpoints to skip HTTPS redirect
+    if (
+      req.path === '/api/flutterwave-webhook' ||
+      req.path === '/api/adsgram-callback' ||
+      req.path === '/api/health'
+    ) {
       return next();
     }
     // Check for HTTPS via Cloudflare/proxy headers
@@ -113,8 +124,9 @@ app.use((req, res, next) => {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.telegram.org https://api.adsgram.ai",
-    "frame-src 'self' https://oauth.telegram.org",
+    "media-src 'self' https: blob: data:",
+    "connect-src 'self' https://api.telegram.org https://api.adsgram.ai https://sad.adsgram.ai",
+    "frame-src 'self' https://oauth.telegram.org https://sad.adsgram.ai https://api.adsgram.ai",
     "object-src 'none'",
     "base-uri 'self'",
   ].join('; '));

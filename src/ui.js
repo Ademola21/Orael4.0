@@ -10,31 +10,34 @@ import { getState, setLocal } from './state.js';
 import { haptic } from './telegram.js';
 import { ARC_LEN } from './ads.js';
 
-/* ---- Economy config (server-authoritative) ----
+function isBankVerified() {
+  const savedSelect = $('savedBankSelect');
+  if (savedSelect && savedSelect.value) {
+    return true;
+  }
+  return getState()._resolvedAccountName !== undefined && getState()._resolvedAccountName !== null;
+}
+
+/* ---- Economy config (100% server-authoritative) ----
    The server sends the full economy config in `state.economy` (see
-   getUserState). These getters read it live so displays NEVER drift from the
-   server's actual values. The old hardcoded ORL_TO_NGN=0.03 / TANK_ORL=30 /
-   RIGS costs were stale (server uses 0.02 / 40 / higher costs). */
-function econ() { return getState().economy || {}; }
-export function orlToNgn() { return econ().ORL_TO_NGN ?? 0.02; }
-export function tankOrl()  { return econ().TANK_ORL ?? 40; }
-export function rigsList() { return econ().RIGS && econ().RIGS.length ? econ().RIGS : RIGS_FALLBACK; }
-export function tierMul(t) { const m = econ().TIER_MULTIPLIERS; return (m && m[t]) || (TIER_MUL_FALLBACK[t] || 1); }
-export function proMul()   { return econ().PRO_MULTIPLIER ?? 2; }
-export function boostMul() { return econ().BOOST_MULTIPLIER ?? 1.2; }
-
-// Fallbacks (only used before the first server sync lands)
-const RIGS_FALLBACK = [
-  { name: 'Rig I',   sessionMin: 240, cost: 0 },
-  { name: 'Rig II',  sessionMin: 200, cost: 8000 },
-  { name: 'Rig III', sessionMin: 160, cost: 30000 },
-  { name: 'Rig IV',  sessionMin: 120, cost: 90000 },
-  { name: 'Rig V',   sessionMin: 80,  cost: 250000 },
-];
-const TIER_MUL_FALLBACK = { 1: 1.0, 2: 1.1, 3: 1.25, 4: 1.5, 5: 2.0 };
-
-const FAUCET_COOLDOWN   = 60 * 60 * 1000;  // 1 hour in ms
-const CHEST_GOAL        = 5;
+   getUserState). The client has ZERO fallback values — if the server
+   hasn't synced yet, we show loading state instead of stale numbers.
+   This prevents financial displays from ever drifting from DB settings. */
+function econ() {
+  const e = getState().economy;
+  if (!e || !e.ORL_TO_NGN) return null; // Not loaded yet
+  return e;
+}
+function econReady() { return econ() !== null; }
+export function orlToNgn() { const e = econ(); return e ? e.ORL_TO_NGN : 0; }
+export function tankOrl()  { const e = econ(); return e ? e.TANK_ORL : 0; }
+export function rigsList() { const e = econ(); return (e && e.RIGS && e.RIGS.length) ? e.RIGS : []; }
+export function tierMul(t) { const e = econ(); return (e && e.TIER_MULTIPLIERS && e.TIER_MULTIPLIERS[t]) || 1; }
+export function proMul()   { const e = econ(); return e ? e.PRO_MULTIPLIER : 1; }
+export function boostMul() { const e = econ(); return e ? e.BOOST_MULTIPLIER : 1; }
+export function withdrawalMethods() { const e = econ(); return e ? (e.WITHDRAWAL_METHODS || {}) : {}; }
+export function faucetCooldown() { const e = econ(); return e ? e.FAUCET_COOLDOWN : 0; }
+export function chestGoal() { const e = econ(); return e ? e.CHEST_GOAL : 0; }
 
 /* ---- Format helpers ---- */
 
@@ -99,7 +102,7 @@ const icoOut = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 19V5m0 0 5 5m-
 
 function now() { return Date.now(); }
 
-const TIER_MULTIPLIERS = { 1: 1.0, 2: 1.1, 3: 1.25, 4: 1.5, 5: 2.0 };
+// Tier multipliers read from econ() — no hardcoded copy
 
 function isPro(S) { return now() < (S.proUntil || 0); }
 function isBoosted(S) { return now() < (S.boostUntil || 0); }
@@ -288,7 +291,12 @@ export function reward(amount, title, body) {
   if (!titleEl || !amtEl || !bodyEl || !veil) return;
 
   titleEl.textContent = title;
-  amtEl.textContent   = (amount >= 0 ? '+' : '') + fmtInt(amount) + ' ORL';
+  if (amount === null || amount === undefined) {
+    amtEl.style.display = 'none';
+  } else {
+    amtEl.style.display = '';
+    amtEl.textContent   = (amount >= 0 ? '+' : '') + fmtInt(amount) + ' ORL';
+  }
   bodyEl.textContent  = body || 'Added to your balance.';
   veil.classList.add('show');
   haptic('success');
@@ -451,6 +459,11 @@ export function setupNavigation() {
       if (screen) screen.classList.add('active');
       setLocal('_screen', btn.dataset.screen);
       document.querySelector('.scroll')?.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Trigger wallet info section update when opening wallet tab
+      if (btn.dataset.screen === 'wallet') {
+        document.dispatchEvent(new CustomEvent('orael:method-change'));
+      }
     });
   });
 }
@@ -535,6 +548,94 @@ export function renderRig(state) {
   }
 }
 
+/* ========================================================================
+   DYNAMIC METHOD GRID — 100% server-authoritative
+   Renders withdrawal method cards from state.economy.WITHDRAWAL_METHODS.
+   No hardcoded minimums, names, or fiat values anywhere.
+   ======================================================================== */
+
+const METHOD_ICONS = {
+  airtime: `<svg class="m-ic" viewBox="0 0 24 24" fill="none"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" stroke="#e0a25b" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
+  bank: `<svg class="m-ic" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="#e0a25b" stroke-width="1.8"/><path d="M3 10h18" stroke="#e0a25b" stroke-width="1.8"/></svg>`,
+  usdt: `<svg class="m-ic" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M7 6h7a3 3 0 0 1 0 6H7m0 0h8a3 3 0 0 1 0 6H7" stroke="#e0a25b" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+};
+
+let _lastMethodGridHash = '';
+
+function renderMethodGrid(S) {
+  const grid = $('methodGrid');
+  if (!grid) return;
+
+  const methods = withdrawalMethods();
+  if (!methods || Object.keys(methods).length === 0) {
+    if (!_lastMethodGridHash) {
+      grid.innerHTML = `<div style="text-align:center;padding:16px;color:var(--ink-soft);font-size:13px">Loading payout methods...</div>`;
+      _lastMethodGridHash = 'loading';
+    }
+    return;
+  }
+
+  const isNG = !S.country || S.country === 'NG';
+  const e = econ();
+
+  // Build a hash to avoid unnecessary re-renders
+  const hash = JSON.stringify({ methods, isNG, sel: S._selectedMethod?.id });
+  if (hash === _lastMethodGridHash) return;
+  _lastMethodGridHash = hash;
+
+  // Filter methods by country
+  const available = [];
+  for (const [key, m] of Object.entries(methods)) {
+    if (m.countries === 'all' || (Array.isArray(m.countries) && m.countries.includes(isNG ? 'NG' : (S.country || '')))) {
+      available.push({ key, ...m });
+    }
+  }
+
+  // If non-NG user has no methods, show USDT at minimum
+  if (available.length === 0 && methods.usdt) {
+    available.push({ key: 'usdt', ...methods.usdt });
+  }
+
+  // Auto-select first method if none selected or current selection is invalid
+  const currentSel = S._selectedMethod?.id;
+  const isCurrentValid = available.some(m => m.key === currentSel);
+
+  if (!currentSel || !isCurrentValid) {
+    // Default to first available method (usually bank for NG)
+    const defaultMethod = available.find(m => m.key === 'bank') || available[0];
+    if (defaultMethod) {
+      setLocal('_selectedMethod', { id: defaultMethod.key, name: defaultMethod.name, min: defaultMethod.minOrl });
+      document.dispatchEvent(new CustomEvent('orael:method-change'));
+    }
+  }
+
+  const selectedId = S._selectedMethod?.id;
+
+  grid.innerHTML = available.map(m => {
+    const icon = METHOD_ICONS[m.key] || METHOD_ICONS.bank;
+    const sel = m.key === selectedId ? ' sel' : '';
+    const minDisplay = `Min ${fmtInt(m.minOrl)} ORL · ${m.fiat}`;
+    return `<div class="method${sel}" id="method-${m.key}" data-min="${m.minOrl}" data-name="${m.name}" data-key="${m.key}">
+      ${icon}
+      <div class="m-name">${m.name}</div><div class="m-min">${minDisplay}</div>
+    </div>`;
+  }).join('');
+
+  // Re-wire click events
+  grid.querySelectorAll('.method').forEach(el => {
+    el.addEventListener('click', () => {
+      haptic('light');
+      grid.querySelectorAll('.method').forEach(x => x.classList.remove('sel'));
+      el.classList.add('sel');
+      const key = el.dataset.key;
+      const serverM = methods[key];
+      setLocal('_selectedMethod', { id: key, name: serverM.name, min: serverM.minOrl });
+      _lastMethodGridHash = ''; // Force re-render
+      render();
+      document.dispatchEvent(new CustomEvent('orael:method-change'));
+    });
+  });
+}
 
 
 /* ========================================================================
@@ -549,7 +650,7 @@ export function renderRig(state) {
 export function render() {
   const S = getState();
 
-  if (!S._loaded) {
+  if (!S._loaded || !econReady()) {
     const balEl = $('balance');
     if (balEl) balEl.textContent = '...';
 
@@ -618,13 +719,17 @@ export function render() {
   const balEl = $('balance');
   if (balEl) balEl.textContent = fmt(effectiveBalance);
 
+  const isNG = !S.country || S.country === 'NG';
+
   const fiatEl = $('balanceFiat');
   if (fiatEl) {
-    const isNG = !S.country || S.country === 'NG';
+    const e = econ();
     if (isNG) {
       fiatEl.textContent = naira(effectiveBalance);
+    } else if (e && e.ORL_PER_USD) {
+      fiatEl.textContent = '≈ $' + fmt(effectiveBalance / e.ORL_PER_USD, 2);
     } else {
-      fiatEl.textContent = '≈ $' + fmt(effectiveBalance / (econ().ORL_PER_USD || 75000), 2);
+      fiatEl.textContent = '≈ $...';
     }
   }
 
@@ -681,17 +786,18 @@ export function render() {
     }
   }
 
-  // Faucet status and cooldown
+  // Faucet status and cooldown (from server config)
+  const fCooldown = faucetCooldown();
   const elapsed = now() - (S.faucetLast || 0);
   const faucetStatusEl = $('faucetStatus');
   const faucetBtnEl = $('faucetBtn');
-  if (faucetStatusEl && faucetBtnEl) {
-    if (elapsed >= FAUCET_COOLDOWN) {
+  if (faucetStatusEl && faucetBtnEl && fCooldown > 0) {
+    if (elapsed >= fCooldown) {
       faucetStatusEl.textContent = 'Ready to claim';
       faucetBtnEl.disabled = false;
       faucetBtnEl.textContent = 'Claim';
     } else {
-      faucetStatusEl.textContent = 'Next in ' + hms(FAUCET_COOLDOWN - elapsed);
+      faucetStatusEl.textContent = 'Next in ' + hms(fCooldown - elapsed);
       faucetBtnEl.disabled = true;
       faucetBtnEl.textContent = 'Wait';
     }
@@ -700,47 +806,41 @@ export function render() {
   // Rig
   renderRig(S);
 
-  // Show/Hide withdrawal methods based on country
-  const isNG = !S.country || S.country === 'NG';
-  const methodAirtimeEl = $('method-airtime');
-  const methodBankEl = $('method-bank');
-  if (methodAirtimeEl) methodAirtimeEl.style.display = isNG ? '' : 'none';
-  if (methodBankEl) methodBankEl.style.display = isNG ? '' : 'none';
+  // Render withdrawal method cards dynamically from server config
+  renderMethodGrid(S);
 
-  // Force selection to USDT if user is not in Nigeria and an NG-only method is selected
-  if (!isNG && S._selectedMethod && (S._selectedMethod.id === 'airtime' || S._selectedMethod.id === 'bank')) {
-    setLocal('_selectedMethod', { id: 'usdt', name: 'USDT (TRC20)', min: 100000 });
-    const usdtEl = $('method-usdt');
-    if (usdtEl) {
-      document.querySelectorAll('.method').forEach(x => x.classList.remove('sel'));
-      usdtEl.classList.add('sel');
+  const methods = withdrawalMethods();
+  const selectedMethod = S._selectedMethod || null;
+  // If no method selected yet, don't show withdrawal info
+  if (!selectedMethod || !methods[selectedMethod.id]) {
+    const withdrawEl = $('withdrawBtn');
+    if (withdrawEl) {
+      withdrawEl.disabled = true;
+      withdrawEl.textContent = econReady() ? 'Select a payout method' : 'Loading...';
     }
+    return;
   }
+  // Read the minimum LIVE from server config, not from the cached _selectedMethod
+  const serverMethod = methods[selectedMethod.id];
+  const selectedMin = serverMethod.minOrl;
+  const selectedName = serverMethod.name;
+  const selectedKey = selectedMethod.id;
 
-  const selectedMethod = S._selectedMethod || { id: 'bank', name: 'Bank (NGN)', min: 50000 };
-  const selectedMin = selectedMethod.min;
-  const selectedName = selectedMethod.name;
-  const selectedKey = selectedMethod.id || 'bank';
-
-  // Show/hide wallet info input (needed for bank + usdt, not airtime)
-  const walletInfoBox = $('walletInfoBox');
-  if (walletInfoBox) {
-    walletInfoBox.style.display = (selectedKey === 'bank' || selectedKey === 'usdt') ? '' : 'none';
-  }
-  const walletInfoLabel = $('walletInfoLabel');
-  if (walletInfoLabel) {
-    walletInfoLabel.textContent = selectedKey === 'usdt' ? 'USDT TRC20 wallet address' : 'Bank account number & name';
-  }
+  // Wallet info section rendering is managed entirely by updateWalletInfoSection in wallet.js
+  // (we no longer override visibility or label text here on the render timer).
 
   const wBalEl = $('wBalance');
   if (wBalEl) wBalEl.textContent = fmt(effectiveBalance);
 
   const wFiatEl = $('wFiat');
+  const e2 = econ();
   if (wFiatEl) {
     if (isNG) {
       wFiatEl.textContent = '₦' + fmt(effectiveBalance * orlToNgn(), 2);
+    } else if (e2 && e2.ORL_PER_USD) {
+      wFiatEl.textContent = '$' + fmt(effectiveBalance / e2.ORL_PER_USD, 2);
     } else {
-      wFiatEl.textContent = '$' + fmt(effectiveBalance / (econ().ORL_PER_USD || 75000), 2);
+      wFiatEl.textContent = '$...';
     }
   }
 
@@ -751,17 +851,110 @@ export function render() {
   if (wProgLabelEl) wProgLabelEl.textContent = `${fmtInt(effectiveBalance)} / ${fmtInt(selectedMin)} ORL`;
 
   const can = effectiveBalance >= selectedMin;
+  const feePctVal = isPro(S) ? 5 : 10;
+  const amountInputEl = $('withdrawAmountInput');
+  const toggleBtn = $('withdrawUnitToggle');
+  const amountLabel = $('withdrawAmountLabel');
+  const orlDeductionRow = $('orlDeductionRow');
+  const orlDeductionVal = $('orlDeductionVal');
+
+  // Verification gating
+  let isVerified = true;
+  if (selectedKey === 'bank') {
+    isVerified = isBankVerified();
+  }
+
+  // Unit toggle visibility and texts
+  const showToggle = (selectedKey === 'bank' || selectedKey === 'airtime');
+  const unit = S._withdrawUnit || 'orl';
+
+  if (toggleBtn) {
+    toggleBtn.style.display = showToggle ? 'inline-block' : 'none';
+    toggleBtn.textContent = unit === 'ngn' ? 'Switch to ORL' : 'Switch to ₦ NGN';
+  }
+  if (amountLabel) {
+    amountLabel.textContent = (showToggle && unit === 'ngn') ? 'Amount to withdraw (NGN)' : 'Amount to withdraw (ORL)';
+  }
+  if (amountInputEl) {
+    amountInputEl.placeholder = (showToggle && unit === 'ngn') ? 'Enter amount in Naira' : 'Enter amount to withdraw';
+    amountInputEl.disabled = !isVerified;
+  }
+
+  let amt = 0;
+  let inputError = false;
+  let inputErrorMsg = '';
+
+  if (!isVerified) {
+    inputError = true;
+    inputErrorMsg = 'Verify account name first';
+  } else if (can) {
+    if (amountInputEl && amountInputEl.value.trim() !== '') {
+      if (showToggle && unit === 'ngn') {
+        const ngnVal = parseFloat(amountInputEl.value);
+        if (isNaN(ngnVal) || ngnVal <= 0) {
+          inputError = true;
+          inputErrorMsg = 'Invalid amount';
+        } else {
+          const grossOrl = Math.round(ngnVal / orlToNgn());
+          const minNgn = Math.round(selectedMin * orlToNgn());
+          const maxNgn = Math.round(effectiveBalance * orlToNgn());
+          if (ngnVal < minNgn) {
+            inputError = true;
+            inputErrorMsg = `Min is ₦${fmt(minNgn, 0)}`;
+          } else if (grossOrl > effectiveBalance) {
+            inputError = true;
+            inputErrorMsg = `Max is ₦${fmt(maxNgn, 0)}`;
+          } else {
+            amt = grossOrl;
+          }
+        }
+      } else {
+        const inputVal = parseInt(amountInputEl.value);
+        if (isNaN(inputVal) || inputVal < selectedMin) {
+          inputError = true;
+          inputErrorMsg = `Min is ${fmtInt(selectedMin)} ORL`;
+        } else if (inputVal > effectiveBalance) {
+          inputError = true;
+          inputErrorMsg = `Max is ${fmtInt(effectiveBalance)} ORL`;
+        } else {
+          amt = inputVal;
+        }
+      }
+    } else {
+      amt = Math.floor(effectiveBalance);
+    }
+  }
+
+  // Display Total ORL deduction row if NGN mode
+  if (orlDeductionRow) {
+    if (showToggle && unit === 'ngn') {
+      orlDeductionRow.style.display = 'flex';
+      if (orlDeductionVal) {
+        orlDeductionVal.textContent = fmtInt(amt) + ' ORL';
+      }
+    } else {
+      orlDeductionRow.style.display = 'none';
+    }
+  }
+
   const withdrawEl = $('withdrawBtn');
   if (withdrawEl) {
-    withdrawEl.disabled = !can;
-    withdrawEl.textContent = can
-      ? `Withdraw to ${selectedName}`
-      : `Need ${fmtInt(selectedMin - effectiveBalance)} more ORL`;
+    if (!isVerified) {
+      withdrawEl.disabled = true;
+      withdrawEl.textContent = 'Verify account name first';
+    } else if (!can) {
+      withdrawEl.disabled = true;
+      withdrawEl.textContent = `Need ${fmtInt(selectedMin - effectiveBalance)} more ORL`;
+    } else if (inputError) {
+      withdrawEl.disabled = true;
+      withdrawEl.textContent = inputErrorMsg;
+    } else {
+      withdrawEl.disabled = false;
+      withdrawEl.textContent = `Withdraw to ${selectedName}`;
+    }
   }
 
   // Fee calculations
-  const feePctVal = isPro(S) ? 5 : 10;
-  const amt = can ? Math.floor(effectiveBalance) : 0;
   const fee = Math.floor(amt * feePctVal / 100);
 
   const feePctEl = $('feePct');
@@ -775,8 +968,8 @@ export function render() {
 
   const feeNetEl = $('feeNet');
   if (feeNetEl) {
-    if (selectedKey === 'usdt') {
-      const usdVal = (amt - fee) / (econ().ORL_PER_USD || 75000);
+    if (selectedKey === 'usdt' && e2 && e2.ORL_PER_USD) {
+      const usdVal = (amt - fee) / e2.ORL_PER_USD;
       feeNetEl.textContent = '$' + fmt(usdVal, 2) + ' USDT';
     } else {
       feeNetEl.textContent = naira(amt - fee);
@@ -824,11 +1017,12 @@ export function render() {
   const scratchTagEl = $('scratchTag');
   if (scratchTagEl) scratchTagEl.textContent = 'Unlimited';
 
+  const cGoal = chestGoal();
   const chestBarEl = $('chestBar');
-  if (chestBarEl) chestBarEl.style.width = ((S.chestProgress || 0) / CHEST_GOAL * 100) + '%';
+  if (chestBarEl && cGoal > 0) chestBarEl.style.width = ((S.chestProgress || 0) / cGoal * 100) + '%';
 
   const chestCapEl = $('chestCap');
-  if (chestCapEl) chestCapEl.textContent = `${S.chestProgress || 0} / ${CHEST_GOAL} ads watched`;
+  if (chestCapEl && cGoal > 0) chestCapEl.textContent = `${S.chestProgress || 0} / ${cGoal} ads watched`;
 
   const lottoMineEl = $('lottoMine');
   if (lottoMineEl) lottoMineEl.textContent = S.lottoTickets || 0;

@@ -15,7 +15,7 @@ import { getWithdrawalsByStatus, updateWithdrawalStatusById, getUserById, update
 import { getTransferStatus } from './flutterwave.js';
 import { notifyWithdrawalCompleted, notifyWithdrawalFailed } from './notifications.js';
 
-const FIFTEEN_MIN = 15 * 60 * 1000;
+const TWO_MIN = 2 * 60 * 1000;
 const ONE_DAY = 24 * 60 * 60 * 1000;
 const ONE_HOUR = 60 * 60 * 1000;
 
@@ -38,10 +38,10 @@ export function startCronJobs() {
   }
   console.log('[cron] Starting background tasks (this replica is the cron leader)...');
 
-  // Poll Flutterwave for stuck pending withdrawals every 15 minutes
-  setInterval(pollStuckWithdrawals, FIFTEEN_MIN);
-  // Run once at startup (after 30s delay)
-  setTimeout(pollStuckWithdrawals, 30 * 1000);
+  // Poll Flutterwave for stuck pending withdrawals every 2 minutes
+  setInterval(pollStuckWithdrawals, TWO_MIN);
+  // Run once at startup (after 10s delay)
+  setTimeout(pollStuckWithdrawals, 10 * 1000);
 
   // Daily DB backup at 3 AM
   scheduleDailyBackup();
@@ -51,11 +51,11 @@ export function startCronJobs() {
 }
 
 /**
- * Find pending withdrawals older than 1 hour and poll Flutterwave for their status.
+ * Find pending withdrawals older than 2 minutes and poll Flutterwave for their status.
  */
 async function pollStuckWithdrawals() {
   try {
-    const cutoff = Date.now() - ONE_HOUR;
+    const cutoff = Date.now() - TWO_MIN;
     const stuck = getWithdrawalsByStatus('pending', 50, 0);
     const stuckOld = stuck.filter(w => w.created_at < cutoff && w.flw_transfer_id);
 
@@ -70,7 +70,7 @@ async function pollStuckWithdrawals() {
 
         if (status.status === 'SUCCESSFUL') {
           updateWithdrawalStatusById(withdrawal.id, 'completed', status.complete_message);
-          addTransaction(withdrawal.user_id, 'withdraw_completed', 0, `Withdrawal #${withdrawal.id} completed (cron poll)`);
+          addTransaction(withdrawal.user_id, 'withdraw_completed', 0, `Withdrawal #${withdrawal.id} completed (cron poll)`, withdrawal.id);
           logAudit(null, 'system', 'withdrawal_completed_cron', withdrawal.user_id, {
             withdrawal_id: withdrawal.id,
             flw_status: status.status,
@@ -86,7 +86,7 @@ async function pollStuckWithdrawals() {
           const user = getUserById(withdrawal.user_id);
           if (user) {
             updateUser(user.id, { balance: user.balance + withdrawal.amount_orl });
-            addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${withdrawal.id} failed (cron) — refunded`);
+            addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${withdrawal.id} failed (cron) — refunded`, withdrawal.id);
             await notifyWithdrawalFailed(user.telegram_id, withdrawal.amount_orl, status.complete_message);
           }
           logAudit(null, 'system', 'withdrawal_failed_cron', withdrawal.user_id, {

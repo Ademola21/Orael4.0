@@ -35,6 +35,12 @@ export default function verifyTelegramInitData(req, res, next) {
         if (dbUser && dbUser.banned === 1) {
           return res.status(403).json({ error: 'User is banned' });
         }
+        if (process.env.MAINTENANCE_MODE === 'true') {
+          const allowedId = Number(process.env.MAINTENANCE_ALLOWED_USER_ID);
+          if (devId !== allowedId) {
+            return res.status(503).json({ error: 'maintenance' });
+          }
+        }
         const devUser = {
           id: devId,
           first_name: req.headers['x-dev-first-name'] || 'Orael',
@@ -132,6 +138,13 @@ export default function verifyTelegramInitData(req, res, next) {
     const dbUser = getUser(user.id);
     if (dbUser && dbUser.banned === 1) {
       return res.status(403).json({ error: 'User is banned' });
+    }
+
+    if (process.env.MAINTENANCE_MODE === 'true') {
+      const allowedId = Number(process.env.MAINTENANCE_ALLOWED_USER_ID);
+      if (user.id !== allowedId) {
+        return res.status(503).json({ error: 'maintenance' });
+      }
     }
 
     // ── 11. Attach to request and continue ─────────────────────

@@ -120,20 +120,59 @@ let banksCache = null;
 let banksCacheTime = 0;
 const BANKS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
+const NG_FALLBACK_BANKS = [
+  { code: '044', name: 'Access Bank' },
+  { code: '058', name: 'Guaranty Trust Bank (GTBank)' },
+  { code: '057', name: 'Zenith Bank' },
+  { code: '033', name: 'United Bank for Africa (UBA)' },
+  { code: '011', name: 'First Bank of Nigeria (FirstBank)' },
+  { code: '070', name: 'Fidelity Bank' },
+  { code: '214', name: 'First City Monument Bank (FCMB)' },
+  { code: '050', name: 'Ecobank Nigeria' },
+  { code: '032', name: 'Union Bank of Nigeria' },
+  { code: '035', name: 'Wema Bank' },
+  { code: '076', name: 'Polaris Bank' },
+  { code: '219', name: 'Stanbic IBTC Bank' },
+  { code: '232', name: 'Sterling Bank' },
+  { code: '082', name: 'Keystone Bank' },
+  { code: '101', name: 'Providus Bank' },
+  { code: '103', name: 'Globus Bank' },
+  { code: '100', name: 'SunTrust Bank' },
+  { code: '215', name: 'Unity Bank' },
+  { code: '301', name: 'Jaiz Bank' },
+  { code: '302', name: 'TAJ Bank' },
+  { code: '303', name: 'Lotus Bank' },
+  { code: '102', name: 'Titan Trust Bank' },
+  { code: '104', name: 'PremiumTrust Bank' },
+  { code: '50515', name: 'Moniepoint MFB' },
+  { code: '999992', name: 'OPay' },
+  { code: '999991', name: 'PalmPay' },
+  { code: '090267', name: 'Kuda Bank' },
+  { code: '51341', name: 'VFD Microfinance Bank' }
+];
+
 export async function listBanks(country = 'NG') {
   // Return cache if fresh
   if (banksCache && Date.now() - banksCacheTime < BANKS_CACHE_TTL) {
     return banksCache;
   }
 
-  const res = await flwRequest(`/banks/${country}`);
-  if (res.status !== 'success' || !Array.isArray(res.data)) {
-    throw new Error(`Failed to fetch banks: ${res.message || 'Unknown error'}`);
+  try {
+    const res = await flwRequest(`/banks/${country}`);
+    if (res.status === 'success' && Array.isArray(res.data)) {
+      banksCache = res.data;
+      banksCacheTime = Date.now();
+      return banksCache;
+    }
+  } catch (err) {
+    console.error(`[flutterwave] Failed to fetch bank list: ${err.message}. Using fallback list.`);
+    if (banksCache) {
+      return banksCache;
+    }
   }
 
-  banksCache = res.data;
-  banksCacheTime = Date.now();
-  return banksCache;
+  // Return fallback banks if Flutterwave API failed or returned bad data
+  return NG_FALLBACK_BANKS;
 }
 
 /* ─── 2. Resolve Account Number → Account Name ─────────────── */

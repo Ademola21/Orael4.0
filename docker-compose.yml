@@ -5,11 +5,17 @@
 
 services:
   orael:
-    build: .
+    build:
+      context: .
+      args:
+        - VITE_ADSGRAM_BLOCK_ID=${VITE_ADSGRAM_BLOCK_ID}
+        - VITE_ADSGRAM_TASK_BLOCK_ID=${VITE_ADSGRAM_TASK_BLOCK_ID}
+        - VITE_DEV_MODE=${VITE_DEV_MODE}
+    image: orael-app:latest
     container_name: orael-app
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - "3001:3000"
     env_file:
       - .env
     volumes:
@@ -29,6 +35,51 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  bot:
+    image: orael-app:latest
+    container_name: orael-bot
+    restart: unless-stopped
+    command: ["node", "server/bot.js"]
+    healthcheck:
+      disable: true
+    env_file:
+      - .env
+    volumes:
+      - orael-data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - orael
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: orael-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - orael-caddy-data:/data
+      - orael-caddy-config:/config
+    depends_on:
+      - orael
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
 volumes:
   orael-data:
+    driver: local
+  orael-caddy-data:
+    driver: local
+  orael-caddy-config:
     driver: local

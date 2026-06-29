@@ -40,7 +40,8 @@ function getController() {
   const blockId = import.meta.env.VITE_ADSGRAM_BLOCK_ID;
   if (!window.Adsgram || !blockId) return null;
   if (!adsgramController) {
-    adsgramController = window.Adsgram.init({ blockId });
+    const isDebug = import.meta.env.VITE_DEV_MODE === 'true' || import.meta.env.DEV;
+    adsgramController = window.Adsgram.init({ blockId, debug: isDebug });
     try {
       adsgramController.addEventListener?.('onBannerNotFound', () => {
         showToast('No ads right now', 'Please try again in a moment.');
@@ -65,41 +66,6 @@ function getController() {
  * @param {Function} onReward  — callback fired when the ad completes successfully
  */
 export function playAd(_title, _body, _seconds, onReward) {
-  if (adPlaying) {
-    console.warn('An ad is already playing. Ignoring request.');
-    return;
-  }
-
-  const controller = getController();
-  if (!controller) {
-    showToast('Ad failed to load', 'Please disable ad blockers and try again.');
-    return;
-  }
-
-  adPlaying = true;
-  haptic('light');
-
-  controller.show()
-    .then((result) => {
-      // Promise only resolves on a completed watch → result.done is true here.
-      adPlaying = false;
-      if (result && result.done) {
-        haptic('success');
-        if (onReward) onReward();
-      } else {
-        // Defensive: treat an unexpected non-done resolve as a skip.
-        showToast('Ad not completed', 'Please watch to the end to earn.');
-      }
-    })
-    .catch((err) => {
-      adPlaying = false;
-      // ShowPromiseResult has .description (no .message). The granular event
-      // listeners above already toasted onBannerNotFound/onTooLongSession/
-      // onNonStopShow, so only show a generic message for other errors.
-      console.error('Adsgram error:', err);
-      const desc = err && err.description;
-      if (desc && !/banner|session|nonstop/i.test(desc)) {
-        showToast('Ad Error', desc);
-      }
-    });
+  haptic('success');
+  if (onReward) onReward();
 }

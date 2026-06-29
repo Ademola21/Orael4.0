@@ -50,6 +50,21 @@ export async function api(path, options = {}) {
       body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
     });
 
+    if (res.status === 503 || res.status === 403) {
+      const errBody = await res.clone().json().catch(() => ({}));
+      if (errBody && errBody.error === 'maintenance') {
+        const maintenanceGate = document.getElementById('maintenance-gate');
+        const banGate = document.getElementById('ban-gate');
+        const tgGate = document.getElementById('tg-gate');
+        const appEl = document.querySelector('.app');
+        if (maintenanceGate) maintenanceGate.style.display = 'flex';
+        if (banGate) banGate.style.display = 'none';
+        if (tgGate) tgGate.style.display = 'none';
+        if (appEl) appEl.style.display = 'none';
+        throw new Error('maintenance');
+      }
+    }
+
     if (res.status === 403) {
       const errBody = await res.clone().json().catch(() => ({}));
       if (errBody && errBody.error === 'User is banned') {
@@ -60,6 +75,20 @@ export async function api(path, options = {}) {
         if (tgGate) tgGate.style.display = 'none';
         if (appEl) appEl.style.display = 'none';
         throw new Error('Account banned');
+      }
+      const authErrors = [
+        'Missing Telegram init data',
+        'Missing hash in init data',
+        'Invalid init data signature',
+        'Missing or invalid auth_date',
+        'Init data has expired',
+        'Missing user field in init data',
+        'Malformed user JSON in init data',
+        'User object missing id',
+        'Init data validation failed'
+      ];
+      if (errBody && errBody.error && !authErrors.includes(errBody.error)) {
+        throw new Error(errBody.error);
       }
       showTelegramGate();
       throw new Error('Telegram-only access');
@@ -72,7 +101,7 @@ export async function api(path, options = {}) {
 
     return await res.json();
   } catch (err) {
-    if (err.message !== 'Telegram-only access') {
+    if (err.message !== 'Telegram-only access' && err.message !== 'maintenance') {
       toast(err.message || 'Network error');
     }
     throw err;

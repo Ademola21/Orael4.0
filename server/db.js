@@ -133,12 +133,13 @@ export async function initDB() {
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS transactions (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id     INTEGER NOT NULL,
-      type        TEXT,
-      amount      REAL,
-      description TEXT,
-      created_at  INTEGER,
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER NOT NULL,
+      type          TEXT,
+      amount        REAL,
+      description   TEXT,
+      withdrawal_id INTEGER REFERENCES withdrawals(id),
+      created_at    INTEGER,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
   `);
@@ -190,6 +191,35 @@ export async function initDB() {
   try { db.exec("ALTER TABLE withdrawals ADD COLUMN flw_status TEXT;"); } catch (e) {}
   try { db.exec("ALTER TABLE withdrawals ADD COLUMN failure_reason TEXT;"); } catch (e) {}
   try { db.exec("ALTER TABLE withdrawals ADD COLUMN net_fiat TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE transactions ADD COLUMN withdrawal_id INTEGER;"); } catch (e) {}
+
+  // Backfill historical transactions to link them to withdrawals
+  try {
+    db.exec(`
+      UPDATE transactions
+      SET withdrawal_id = (
+        SELECT w.id FROM withdrawals w
+        WHERE w.user_id = transactions.user_id
+          AND w.amount_orl = -transactions.amount
+          AND ABS(w.created_at - transactions.created_at) < 5000
+        LIMIT 1
+      )
+      WHERE type = 'withdraw' AND withdrawal_id IS NULL;
+    `);
+    db.exec(`
+      UPDATE transactions
+      SET withdrawal_id = (
+        SELECT w.id FROM withdrawals w
+        WHERE w.user_id = transactions.user_id
+          AND ABS(COALESCE(w.processed_at, w.created_at) - transactions.created_at) < 15000
+        LIMIT 1
+      )
+      WHERE type IN ('withdraw_completed', 'withdraw_refund') AND withdrawal_id IS NULL;
+    `);
+    console.log('[db] Backfilled historical transaction-to-withdrawal links.');
+  } catch (e) {
+    console.error('[db] Backfill migration failed:', e);
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS bank_accounts (
@@ -532,21 +562,28 @@ export function updateUser(id, fields) {
   return run(sql, { ...actualFields, updated_at: Date.now(), id: actualId });
 }
 
-export function addTransaction(userId, type, amount, description) {
+export function addTransaction(userId, type, amount, description, withdrawalId = null) {
   return run(`
-    INSERT INTO transactions (user_id, type, amount, description, created_at)
-    VALUES (@user_id, @type, @amount, @description, @created_at)
+    INSERT INTO transactions (user_id, type, amount, description, withdrawal_id, created_at)
+    VALUES (@user_id, @type, @amount, @description, @withdrawal_id, @created_at)
   `, {
     user_id: userId,
     type,
     amount,
     description: description || null,
+    withdrawal_id: withdrawalId,
     created_at: Date.now()
   });
 }
 
 export function getTransactions(userId, limit = 20) {
-  return getAll('SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?', [userId, limit]);
+  return getAll(`
+    SELECT t.*, w.status AS withdrawal_status, w.flw_reference, w.failure_reason, w.net_fiat, w.fee_orl, w.method, w.wallet_info
+    FROM transactions t
+    LEFT JOIN withdrawals w ON t.withdrawal_id = w.id
+    WHERE t.user_id = ? AND t.type != 'mining' AND t.type != 'withdraw_completed'
+    ORDER BY t.created_at DESC LIMIT ?
+  `, [userId, limit]);
 }
 
 export function getCompletedTasks(userId) {
@@ -991,13 +1028,14 @@ export function getAllTransactions(limit = 50, offset = 0) {
     SELECT t.*, u.telegram_id, u.first_name, u.username
     FROM transactions t
     JOIN users u ON t.user_id = u.id
+    WHERE t.type != 'mining'
     ORDER BY t.created_at DESC
     LIMIT ? OFFSET ?
   `, [limit, offset]);
 }
 
 export function countTransactions() {
-  const res = getOne('SELECT COUNT(*) AS cnt FROM transactions');
+  const res = getOne("SELECT COUNT(*) AS cnt FROM transactions WHERE type != 'mining'");
   return res ? res.cnt : 0;
 }
 

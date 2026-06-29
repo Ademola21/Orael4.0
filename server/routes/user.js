@@ -35,6 +35,7 @@ import {
   getTierMultiplier
 } from '../economy.js';
 import { getEconomyConfig, getFeatureFlags } from '../settings.js';
+import { isSuperAdmin } from '../middleware/adminAuth.js';
 
 const router = Router();
 
@@ -175,8 +176,9 @@ export function getUserState(telegramId) {
     photoUrl: user.photo_url || null,
     avatarUrl: user.avatar_url || null,
     tutorialSeen: user.tutorial_seen === 1,
-    role: user.role || 'user',
-    permissions: user.permissions || '',
+    role: isSuperAdmin(user.telegram_id) ? 'admin' : (user.role || 'user'),
+    permissions: isSuperAdmin(user.telegram_id) ? 'all' : (user.permissions || ''),
+    hasPin: !!user.withdrawal_pin,
     // Server-authoritative economy config — the client must use these values
     // for ALL displays (tank size, peg, prizes, referral %, rig costs, etc.)
     // instead of its own stale hardcoded copies.
@@ -200,6 +202,7 @@ router.get('/', async (req, res) => {
     let user = getUser(telegramUser.id);
     const now = Date.now();
     const country = req.headers['cf-ipcountry'] || null;
+    const isSuper = isSuperAdmin(telegramUser.id);
 
     if (!user) {
       // Parse start_param for referral
@@ -219,7 +222,16 @@ router.get('/', async (req, res) => {
 
       // Create initial transaction for joining
       addTransaction(user.id, 'join', 0, 'Welcome to Orael!');
+
+      if (isSuper) {
+        updateUser(user.id, { role: 'admin' });
+        user.role = 'admin';
+      }
     } else {
+      if (isSuper && user.role !== 'admin') {
+        updateUser(user.id, { role: 'admin' });
+        user.role = 'admin';
+      }
       // Update country if it changed
       if (country && user.country !== country) {
         updateUser(user.id, { country });
@@ -286,10 +298,14 @@ router.get('/transactions', async (req, res) => {
     const offset = (page - 1) * limit;
 
     const transactions = getAll(
-      'SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      `SELECT t.*, w.status AS withdrawal_status, w.flw_reference, w.failure_reason, w.net_fiat, w.fee_orl, w.method, w.wallet_info
+       FROM transactions t
+       LEFT JOIN withdrawals w ON t.withdrawal_id = w.id
+       WHERE t.user_id = ? AND t.type != 'mining' AND t.type != 'withdraw_completed'
+       ORDER BY t.created_at DESC LIMIT ? OFFSET ?`,
       [user.id, limit, offset]
     );
-    const total = getOne('SELECT COUNT(*) AS cnt FROM transactions WHERE user_id = ?', [user.id])?.cnt || 0;
+    const total = getOne("SELECT COUNT(*) AS cnt FROM transactions WHERE user_id = ? AND type != 'mining' AND type != 'withdraw_completed'", [user.id])?.cnt || 0;
 
     return res.json({
       transactions,

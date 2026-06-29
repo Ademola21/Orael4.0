@@ -2,37 +2,26 @@
 //  Orael – Economy Constants (single source of truth)
 // ─────────────────────────────────────────────────────────────
 //
-//  CALIBRATED AGAINST REAL ADSGRAM DATA (June 2026)
-//  ───────────────────────────────────────────────────────────
-//  Real weighted CPM (from Adsgram dashboard):
-//     51 impressions, $0.114 total → $2.24 per 1,000 ad views
+//  UPDATED PEG (June 2026):
+//     1 ORL = $0.002 USD
+//     $1 USD = ₦1,387 NGN (current market rate)
+//     Therefore: 1 ORL = ₦2.774 (0.002 × 1387)
 //
-//  CORRECTED PEG (June 2026):
-//     $1 = ₦1,500 (current market rate)
-//     1 ORL = ₦0.02 → $1 = 75,000 ORL  (was 50,000 — math was wrong)
-//
-//  Revenue per single ad view:
-//     $2.24 / 1000 = $0.00224 USD
-//                  = ₦3.36  (at ₦1,500/$1)
-//                  = 168 ORL (at ₦0.02/ORL peg)
-//
-//  PAYOUT RATIOS (all targets):
-//     Per-ad revenue = 168 ORL
-//     Target payout  = 22-28% (sweet spot: fair to users, safe for platform)
-//     Per-ad reward   = 35-45 ORL range
-//
-//  Safe ceiling (30%): 50.4 ORL per ad
-//  Referral envelope (L1 7% + L2 2% = 9%): true refuel cost = 40 × 1.09 = 43.6 ORL = 26% ✅
+//  REVENUE CALCULATIONS:
+//     Adsgram CPM ≈ $2.24 per 1000 views
+//     Revenue per ad = $0.00224 = ₦3.11
+//     At 40 ORL per ad = ₦111 revenue per 40 ORL
+//     Payout ratio ≈ 27-30% (sustainable)
 // ─────────────────────────────────────────────────────────────
 
-/** ORL → NGN exchange rate (peg: 1 ORL = ₦0.02, so $1 = 75,000 ORL) */
-export const ORL_TO_NGN = 0.02;
+/** ORL → NGN exchange rate (peg: 1 ORL = $0.002, $1 = ₦1,387, so 1 ORL = ₦2.774) */
+export const ORL_TO_NGN = 2.774;
 
 /** USD → NGN exchange rate */
-export const USD_TO_NGN = 1500;
+export const USD_TO_NGN = 1387;
 
-/** ORL per USD (derived from peg) */
-export const ORL_PER_USD = 75000;
+/** ORL per USD (derived from peg: $0.002 per ORL) */
+export const ORL_PER_USD = 500;
 
 /** ORL earned per full tank session (one refuel ad = one tank) */
 export const TANK_ORL = 40;
@@ -169,32 +158,35 @@ export const BOOST_MULTIPLIER = 1.2;
 // ── Withdrawal Configuration ────────────────────────────────
 //  Fee: 10% for free users, 5% for Pro users (pure margin)
 //  Methods vary by country (NG gets airtime + bank, others get USDT only)
+//  Updated: 1 ORL = $0.002 = ₦2.774 (at $1 = ₦1,387)
+//  Minimum withdrawal: ₦100 ≈ 40 ORL
 export const WITHDRAWAL_FEE_PCT = 0.10;
 export const WITHDRAWAL_FEE_PRO_PCT = 0.05;
 
 // Manual approval threshold — withdrawals at or above this ORL amount
 // require admin approval BEFORE being sent to Flutterwave.
 // Below this threshold, withdrawals auto-process instantly.
-export const MANUAL_APPROVAL_THRESHOLD_ORL = 100000; // 100k ORL ≈ ₦2,000
+// ₦5,000 ÷ 2.774 = 1,802 ORL → rounded to 1,800 ORL
+export const MANUAL_APPROVAL_THRESHOLD_ORL = 1800; // ₦5,000 ≈ 1,800 ORL
 
 export const WITHDRAWAL_METHODS = {
   airtime: {
     name: 'Airtime',
-    minOrl: 30000,
-    fiat: '₦600',
+    minOrl: 40,        // ₦100 minimum (40 ORL × ₦2.774)
+    fiat: '₦100',
     countries: ['NG'],
     icon: 'phone'
   },
   bank: {
     name: 'Bank (NGN)',
-    minOrl: 75000,
-    fiat: '₦1,500',
+    minOrl: 40,        // ₦100 minimum (same as airtime)
+    fiat: '₦100',
     countries: ['NG'],
     icon: 'bank'
   },
   usdt: {
     name: 'USDT (TRC20)',
-    minOrl: 150000,
+    minOrl: 720,       // $2.00 minimum (720 ORL × $0.002)
     fiat: '$2.00',
     countries: 'all',
     icon: 'crypto'

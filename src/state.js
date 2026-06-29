@@ -70,7 +70,7 @@ let S = {
   /* ---- Local-only state (not sent to / from server) ---- */
   _loaded: false,
   _screen: 'mine',
-  _selectedMethod: { id: 'bank', name: 'Bank (NGN)', min: 75000 },
+  _selectedMethod: null, // Set dynamically from server economy config
   _earnTab: 'tasks',
   _tutorialSeen: false,
   _historyPage: 1,

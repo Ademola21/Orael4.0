@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { updateState, setLocal, loadCachedState, getState } from './state.js';
 import { $, render, setupNavigation, setupSegmentedTabs, setupTierModal, setupModal } from './ui.js';
 import { setupMining } from './mining.js';
-import { buildWheel, setupPlay, renderLeaderboard } from './play.js';
+import { buildWheel, setupPlay, renderLeaderboard, isGameActive } from './play.js';
 import { setupEarn, renderTasks, renderStreak } from './earn.js';
 import { setupWallet } from './wallet.js';
 import { setupProfile } from './profile.js';
@@ -25,6 +25,40 @@ import './styles/index.css';
 import './styles/profile.css';
 import './styles/admin.css';
 
+function hideSplash() {
+  const splash = document.getElementById('splash-screen');
+  const appEl = document.querySelector('.app');
+  if (splash) {
+    splash.style.opacity = '0';
+    splash.style.transition = 'opacity 0.4s ease';
+    setTimeout(() => {
+      splash.style.display = 'none';
+      const tgGate = document.getElementById('tg-gate');
+      const banGate = document.getElementById('ban-gate');
+      const maintenanceGate = document.getElementById('maintenance-gate');
+      const isGateVisible = 
+        (tgGate && tgGate.style.display === 'flex') ||
+        (banGate && banGate.style.display === 'flex') ||
+        (maintenanceGate && maintenanceGate.style.display === 'flex');
+      
+      if (!isGateVisible && appEl) {
+        appEl.style.display = 'flex';
+      }
+    }, 400);
+  } else {
+    const tgGate = document.getElementById('tg-gate');
+    const banGate = document.getElementById('ban-gate');
+    const maintenanceGate = document.getElementById('maintenance-gate');
+    const isGateVisible = 
+      (tgGate && tgGate.style.display === 'flex') ||
+      (banGate && banGate.style.display === 'flex') ||
+      (maintenanceGate && maintenanceGate.style.display === 'flex');
+    if (!isGateVisible && appEl) {
+      appEl.style.display = 'flex';
+    }
+  }
+}
+
 async function boot() {
   // 1. Initialize Telegram SDK
   const { tg, user, startParam } = initTelegram();
@@ -35,6 +69,7 @@ async function boot() {
     const appEl = document.querySelector('.app');
     if (gate) gate.style.display = 'flex';
     if (appEl) appEl.style.display = 'none';
+    hideSplash();
     return;
   }
 
@@ -65,6 +100,8 @@ async function boot() {
 
   // Mark state as loaded to render balance/energy
   setLocal('_loaded', true);
+
+  hideSplash();
 
   // Update avatar again with server-side photo_url
   const S = getState();
@@ -119,6 +156,7 @@ async function boot() {
   // 8. Start interval loops
   // Client-side local mining estimation, gauge update, and animations (every second)
   setInterval(() => {
+    if (isGameActive && isGameActive()) return;
     render();
     checkBalanceAnimation();
     updatePulseGlow();
@@ -127,12 +165,14 @@ async function boot() {
 
   // Re-attach ripples + scroll reveal every 5 seconds (catches dynamically added elements)
   setInterval(() => {
+    if (isGameActive && isGameActive()) return;
     attachAllRipples();
     refreshScrollReveal();
   }, 5000);
 
   // Authoritative server state sync (every 30 seconds)
   setInterval(async () => {
+    if (isGameActive && isGameActive()) return;
     try {
       const serverState = await api('/api/user');
       updateState(serverState);

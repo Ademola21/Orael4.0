@@ -78,3 +78,44 @@
   border-top: 1px solid var(--line-strong); margin-top: 6px; padding-top: 10px;
 }
 .fee-row b { font-family: var(--font-mono); color: var(--gold-1); }
+
+/* Custom Bank select styles */
+.custom-select-trigger {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-inset);
+  color: var(--ink);
+  font-size: 13px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+.custom-select-trigger:hover, .custom-select-trigger:active {
+  border-color: var(--gold-2);
+}
+.custom-select-trigger.loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.bank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  transition: all 0.15s ease;
+}
+.bank-item:hover, .bank-item:active {
+  background: rgba(224, 162, 91, 0.08);
+  border-color: var(--gold-2);
+}

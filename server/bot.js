@@ -127,11 +127,9 @@ async function handleMessage(msg) {
     const parts = text.split(' ');
     const refParam = parts.length > 1 ? parts[1] : '';
 
-    // Build the launch URL
+    // Build the launch URL with cache-buster parameter
     // Telegram Mini App passes the start parameter via tg.initDataUnsafe.start_param
-    // When using web_app launch buttons, we pass it as a query parameter or let TG handle deep-link propagation.
-    // For direct launch, we point to the domain.
-    const launchUrl = refParam ? `${DOMAIN}?start_app=${refParam}` : DOMAIN;
+    const launchUrl = refParam ? `${DOMAIN}?v=3.0.1&start_app=${refParam}` : `${DOMAIN}?v=3.0.1`;
 
     await callTelegram('sendMessage', {
       chat_id: chatId,
@@ -153,6 +151,16 @@ async function handleMessage(msg) {
 async function startBot() {
   console.log('[bot] Initializing database...');
   await initDB();
+
+  console.log('[bot] Setting Chat Menu Button...');
+  await callTelegram('setChatMenuButton', {
+    menu_button: {
+      type: 'web_app',
+      text: 'Play Orael',
+      web_app: { url: `${DOMAIN}?v=3.0.1` }
+    }
+  });
+
   console.log('[bot] Starting Telegram Bot polling loop...');
   console.log(`[bot] Target WebApp Domain: ${DOMAIN}`);
   pollUpdates();

@@ -31,7 +31,12 @@ let spinning = false;
  * will actually pay. Called on boot AND whenever the economy config changes.
  */
 export function buildWheel() {
-  const svg = $('wheel');
+  buildWheelForElement('wheel', '.wheel-bezel');
+  buildWheelForElement('wheelModal', '#wheelModalBezel');
+}
+
+function buildWheelForElement(svgId, bezelSelector) {
+  const svg = $(svgId);
   if (!svg) return;
 
   const prizes = econ().WHEEL_PRIZES || [120, 60, 300, 0, 40, 20, 600, 8];
@@ -67,8 +72,8 @@ export function buildWheel() {
   svg.innerHTML = html;
 
   // Build the gold stud bezel ring (16 dots)
-  const bezel = document.querySelector('.wheel-bezel');
-  if (bezel && bezel.childElementCount === 0) {
+  const bezel = document.querySelector(bezelSelector);
+  if (bezel && bezel.innerHTML === '') {
     let dots = '';
     const dotN = 16;
     for (let i = 0; i < dotN; i++) {
@@ -79,12 +84,6 @@ export function buildWheel() {
   }
 }
 
-/**
- * Animate the wheel to land on the server-provided prize index.
- * The pointer is fixed at the top (12 o'clock). Segment i's center starts at
- * angle (i*seg + seg/2 - 90). To bring it to the top (-90) we rotate the wheel
- * by R where R ≡ -(i*seg + seg/2) (mod 360). We add 6 full turns for drama.
- */
 function animateWheel(prizeIndex, prizeAmount) {
   if (spinning) return;
   spinning = true;
@@ -97,15 +96,23 @@ function animateWheel(prizeIndex, prizeAmount) {
   const delta = (landAt - base + 360) % 360;
   wheelRot += 360 * 6 + delta;
 
-  const wheelEl = $('wheel');
+  const wheelEl = $('wheelModal');
   if (wheelEl) {
     wheelEl.style.transition = 'transform 4.6s cubic-bezier(0.16, 0.92, 0.18, 1)';
     wheelEl.style.transform = `rotate(${wheelRot}deg)`;
   }
 
+  const closeBtn = $('spinCloseBtn');
+  if (closeBtn) closeBtn.style.display = 'none';
+
   setTimeout(() => {
     spinning = false;
     if (wheelEl) wheelEl.style.transition = '';
+    if (closeBtn) closeBtn.style.display = '';
+
+    const spinVeil = $('spinVeil');
+    if (spinVeil) spinVeil.classList.remove('show');
+
     if (prizeAmount > 0) {
       reward(prizeAmount, 'Lucky spin!', 'Watch an ad to spin again!');
       if (prizeAmount >= 300) launchConfetti(60);
@@ -118,7 +125,7 @@ function animateWheel(prizeIndex, prizeAmount) {
 
 /* ========================================================================
    SCRATCH CARD (canvas-based real scratch-off)
-   ======================================================================== */
+   ========================================================================= */
 let scratchReady = false;
 let scratchRevealed = false;
 
@@ -129,6 +136,7 @@ function initScratchCanvas() {
 
   // Size canvas to its display box (device pixels for crispness)
   const rect = wrap.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return; // avoid canvas scale errors when hidden
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
   canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -288,20 +296,58 @@ export function setupPlay() {
 
   /* ---- Spin ---- */
   const spinBtn = $('spinBtn');
+  const spinVeil = $('spinVeil');
+  const spinCloseBtn = $('spinCloseBtn');
+  const spinModalBtn = $('spinModalBtn');
+  const wheelModalHub = $('wheelModalHub');
+  const inlineWheel = $('wheel');
+
   if (spinBtn) {
     spinBtn.addEventListener('click', () => {
-      if (spinning) return;
-      const doSpin = async () => {
-        try {
-          const res = await api('/api/play/spin', { method: 'POST' });
-          updateState(res);
-          buildWheel(); // ensure wheel matches server prizes
-          animateWheel(res.prizeIndex ?? 0, res.prizeAmount ?? 0);
-        } catch (e) { /* handled */ }
-      };
-      playAd('Loading spin…', 'Watch an ad to spin the wheel.', 10, doSpin);
+      haptic('light');
+      buildWheel(); // ensure both wheels match current economy
+      if (spinVeil) spinVeil.classList.add('show');
     });
   }
+  if (inlineWheel) {
+    inlineWheel.addEventListener('click', () => {
+      haptic('light');
+      buildWheel();
+      if (spinVeil) spinVeil.classList.add('show');
+    });
+  }
+  if (spinCloseBtn) {
+    spinCloseBtn.addEventListener('click', () => {
+      if (spinning) return;
+      haptic('light');
+      if (spinVeil) spinVeil.classList.remove('show');
+    });
+  }
+  if (spinVeil) {
+    spinVeil.addEventListener('click', (e) => {
+      if (spinning) return;
+      if (e.target === spinVeil) {
+        haptic('light');
+        spinVeil.classList.remove('show');
+      }
+    });
+  }
+
+  const triggerModalSpin = () => {
+    if (spinning) return;
+    const doSpin = async () => {
+      try {
+        const res = await api('/api/play/spin', { method: 'POST' });
+        updateState(res);
+        buildWheel();
+        animateWheel(res.prizeIndex ?? 0, res.prizeAmount ?? 0);
+      } catch (e) { /* handled */ }
+    };
+    playAd('Loading spin…', 'Watch an ad to spin the wheel.', 10, doSpin);
+  };
+
+  if (spinModalBtn) spinModalBtn.addEventListener('click', triggerModalSpin);
+  if (wheelModalHub) wheelModalHub.addEventListener('click', triggerModalSpin);
 
   /* ---- Scratch card ---- */
   const scratchBtn = $('scratchBtn');
@@ -458,4 +504,8 @@ export function renderLeaderboard(data) {
     <div class="lb-name">You<small>climb to reach the prize pool</small></div><div class="lb-amt">${fmtInt(S.balance)} ORL</div></div>`;
 
   el.innerHTML = rows;
+}
+
+export function isGameActive() {
+  return spinning || cfBusy;
 }

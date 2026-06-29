@@ -119,7 +119,7 @@ router.get('/users/:id', requirePermission('view_users'), (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const recentWithdrawals = getRecentWithdrawals(userId, 10);
-    const transactions = getAll('SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', [userId]);
+    const transactions = getAll("SELECT * FROM transactions WHERE user_id = ? AND type != 'mining' ORDER BY created_at DESC LIMIT 20", [userId]);
 
     return res.json({
       user: {
@@ -299,7 +299,7 @@ router.post('/withdrawals/:id/process', requirePermission('process_withdrawals')
     if (status === 'rejected') {
       updateWithdrawalStatusById(wid, 'rejected', 'Rejected by admin');
       updateUser(user.id, { balance: user.balance + withdrawal.amount_orl });
-      addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${wid} rejected — refunded`);
+      addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${wid} rejected — refunded`, wid);
       await notifyWithdrawalFailed(user.telegram_id, withdrawal.amount_orl, 'Rejected by admin');
       logAudit(req.adminUser.id, req.adminUser.role, 'withdrawal_rejected', withdrawal.user_id, {
         withdrawal_id: wid,
@@ -333,7 +333,7 @@ router.post('/withdrawals/:id/process', requirePermission('process_withdrawals')
             return res.status(400).json({ error: `Bank "${bankName}" not found in Flutterwave` });
           }
 
-          const netNgn = Math.floor(withdrawal.net_amount * E.ORL_TO_NGN);
+          const netNgn = Math.round(withdrawal.net_amount * E.ORL_TO_NGN);
           const flwReference = generateTransferReference(user.id);
 
           const flwResult = await createTransfer({
@@ -357,7 +357,7 @@ router.post('/withdrawals/:id/process', requirePermission('process_withdrawals')
           return res.json({ success: true, status: 'pending', message: 'Transfer initiated. Webhook will confirm completion.' });
         } else if (withdrawal.method === 'airtime') {
           const phone = withdrawal.wallet_info;
-          const netNgn = Math.floor(withdrawal.net_amount * E.ORL_TO_NGN);
+          const netNgn = Math.round(withdrawal.net_amount * E.ORL_TO_NGN);
           const flwReference = generateAirtimeReference(user.id);
 
           const flwResult = await purchaseAirtime({
@@ -418,7 +418,7 @@ router.post('/withdrawals/:id/requery', requirePermission('process_withdrawals')
     // Update our records
     if (status.status === 'SUCCESSFUL' && withdrawal.status !== 'completed') {
       updateWithdrawalStatusById(wid, 'completed', status.complete_message);
-      addTransaction(withdrawal.user_id, 'withdraw_completed', 0, `Withdrawal #${wid} completed (admin re-query)`);
+      addTransaction(withdrawal.user_id, 'withdraw_completed', 0, `Withdrawal #${wid} completed (admin re-query)`, wid);
       const user = getUserById(withdrawal.user_id);
       if (user) {
         await notifyWithdrawalCompleted(user.telegram_id, withdrawal.amount_orl, withdrawal.method, withdrawal.net_fiat || '');
@@ -428,7 +428,7 @@ router.post('/withdrawals/:id/requery', requirePermission('process_withdrawals')
       const user = getUserById(withdrawal.user_id);
       if (user) {
         updateUser(user.id, { balance: user.balance + withdrawal.amount_orl });
-        addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${wid} failed (re-query) — refunded`);
+        addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${wid} failed (re-query) — refunded`, wid);
         await notifyWithdrawalFailed(user.telegram_id, withdrawal.amount_orl, status.complete_message);
       }
     }
@@ -470,7 +470,7 @@ router.post('/withdrawals/bulk-process', requirePermission('process_withdrawals'
           const user = getUserById(withdrawal.user_id);
           if (user) {
             updateUser(user.id, { balance: user.balance + withdrawal.amount_orl });
-            addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${wid} bulk rejected — refunded`);
+            addTransaction(user.id, 'withdraw_refund', withdrawal.amount_orl, `Withdrawal #${wid} bulk rejected — refunded`, wid);
           }
           flushNow();
           results.push({ id: wid, status: 'success' });
@@ -618,7 +618,7 @@ router.get('/users/:id/detail', requirePermission('view_users'), (req, res) => {
     const user = getUserById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const transactions = getAll('SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [userId]);
+    const transactions = getAll("SELECT * FROM transactions WHERE user_id = ? AND type != 'mining' ORDER BY created_at DESC LIMIT 50", [userId]);
     const withdrawals = getAll('SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', [userId]);
     const achievements = getUserAchievements(userId);
     const referrer = user.referred_by ? getUserById(user.referred_by) : null;

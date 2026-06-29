@@ -11,6 +11,7 @@ let historyTotalPages = 1;
 let banksCache = null;
 let selectedBank = null;
 let resolvedAccountName = null;
+let savedBankAccounts = [];  // ← fix: was implicit global, caused TypeError crash
 
 export function isBankVerified() {
   const savedSelect = $('savedBankSelect');

@@ -39,100 +39,73 @@ console.error = function(...args) {
 <script src="/telegram-web-app.js"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <style>
-/* Splash screen styling */
+/* ── Premium splash screen — sapphire + gold ─────────────────────── */
 .splash-screen {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: #0b0a09;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-.splash-inner {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.splash-logo-wrap {
-  position: relative;
-  width: 90px;
-  height: 90px;
-  margin-bottom: 24px;
-}
-.splash-logo-bg {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(217, 119, 6, 0.15) 0%, transparent 70%);
-  animation: splashPulse 2s infinite ease-in-out;
-}
-.splash-logo-ring {
-  position: absolute;
-  top: -4px; left: -4px; width: 98px; height: 98px;
-  border: 1.5px solid transparent;
-  border-top-color: #d97706;
-  border-radius: 50%;
-  animation: splashRotate 2s linear infinite;
-}
-.splash-logo {
-  width: 70px;
-  height: 70px;
-  margin-top: 10px;
-  filter: drop-shadow(0 0 10px rgba(217, 119, 6, 0.4));
-}
-.splash-title {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 700;
-  font-size: 26px;
-  letter-spacing: 0.05em;
-  color: #fff;
-  background: linear-gradient(135deg, #fbbf24, #d97706);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 6px;
-}
-.splash-subtitle {
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: 11px;
-  color: #a8a29e;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  margin-bottom: 30px;
-}
-.splash-loader {
-  width: 140px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+  position: fixed; inset: 0; z-index: 9999;
+  background:
+    radial-gradient(70% 50% at 50% 30%, rgba(37, 99, 235, 0.10), transparent 60%),
+    radial-gradient(60% 40% at 50% 80%, rgba(251, 191, 36, 0.06), transparent 60%),
+    #0b0f1a;
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
   overflow: hidden;
 }
+.splash-inner { text-align: center; display: flex; flex-direction: column; align-items: center; }
+.splash-logo-wrap {
+  position: relative; width: 120px; height: 120px; margin-bottom: 28px;
+  display: grid; place-items: center;
+}
+/* Outer rotating ring — sapphire */
+.splash-logo-ring-2 {
+  position: absolute; inset: -12px; border-radius: 50%;
+  border: 1px dashed rgba(96, 165, 250, 0.25);
+  animation: splashRotateRev 20s linear infinite;
+}
+/* Inner rotating ring — gold accent */
+.splash-logo-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #fbbf24;
+  border-right-color: rgba(251, 191, 36, 0.3);
+  animation: splashRotate 1.8s linear infinite;
+}
+/* Glow background */
+.splash-logo-bg {
+  position: absolute; inset: 8px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.15) 0%, transparent 70%);
+  animation: splashPulse 2.5s infinite ease-in-out;
+}
+.splash-logo {
+  width: 72px; height: 72px; position: relative; z-index: 2;
+  filter: drop-shadow(0 0 16px rgba(251, 191, 36, 0.35));
+  animation: splashFloat 3s ease-in-out infinite;
+}
+.splash-title {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 28px;
+  letter-spacing: 0.08em; color: #fff;
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.splash-subtitle {
+  font-family: 'Inter', sans-serif; font-weight: 500; font-size: 10px;
+  color: #64748b; letter-spacing: 0.25em; text-transform: uppercase;
+  margin-bottom: 36px;
+}
+.splash-loader {
+  width: 160px; height: 2px;
+  background: rgba(255, 255, 255, 0.06); border-radius: 999px; overflow: hidden;
+}
 .splash-loader-bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #d97706, #fbbf24);
-  border-radius: 10px;
+  height: 100%; width: 0%; border-radius: 999px;
+  background: linear-gradient(90deg, #1e40af, #3b82f6, #fbbf24);
   animation: splashLoad 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.4);
 }
-
-@keyframes splashPulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.2); opacity: 1; }
-}
-@keyframes splashRotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-@keyframes splashLoad {
-  0% { width: 0%; }
-  30% { width: 40%; }
-  70% { width: 75%; }
-  100% { width: 100%; }
-}
+@keyframes splashPulse { 0%,100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.15); opacity: 1; } }
+@keyframes splashRotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes splashRotateRev { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+@keyframes splashFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes splashLoad { 0% { width: 0%; } 30% { width: 40%; } 70% { width: 75%; } 100% { width: 100%; } }
 </style>
 </head>
 <body>
@@ -140,12 +113,13 @@ console.error = function(...args) {
 <div class="splash-screen" id="splash-screen">
   <div class="splash-inner">
     <div class="splash-logo-wrap">
+      <div class="splash-logo-ring-2"></div>
       <div class="splash-logo-bg"></div>
       <div class="splash-logo-ring"></div>
       <img src="orael_logo.svg" class="splash-logo" alt="Orael Logo" />
     </div>
     <div class="splash-title">ORAEL</div>
-    <div class="splash-subtitle">AI MINING FAUCET</div>
+    <div class="splash-subtitle">AI Mining Faucet</div>
     <div class="splash-loader">
       <div class="splash-loader-bar"></div>
     </div>
@@ -867,20 +841,8 @@ console.error = function(...args) {
 </div>
 
 
-<!-- ===================== TUTORIAL OVERLAY (NEW) ===================== -->
-<div class="tutorial-veil" id="tutorialVeil">
-  <div class="tutorial-sheet">
-    <div class="tutorial-progress" id="tutorialProgress"></div>
-    <div class="tutorial-illustration" id="tutorialIllustration"></div>
-    <h2 class="tutorial-title" id="tutorialTitle">Welcome to Orael</h2>
-    <p class="tutorial-body" id="tutorialBody">Let's get you started.</p>
-    <div class="tutorial-buttons">
-      <button class="btn btn-ghost" id="tutorialBack">Back</button>
-      <button class="btn btn-primary" id="tutorialNext">Next</button>
-    </div>
-    <button class="tutorial-skip" id="tutorialSkip">Skip tutorial</button>
-  </div>
-</div>
+<!-- ===================== TUTORIAL OVERLAY ===================== -->
+<!-- Built dynamically by src/tutorial.js — spotlight + tooltip overlay -->
 
 <script type="module" src="/src/main.js"></script>
 </body>

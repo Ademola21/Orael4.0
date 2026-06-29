@@ -8,6 +8,7 @@ import { buildWheel, setupPlay, renderLeaderboard, isGameActive } from './play.j
 import { setupEarn, renderTasks, renderStreak } from './earn.js';
 import { setupWallet } from './wallet.js';
 import { setupProfile } from './profile.js';
+import { setupAdmin } from './admin.js';
 import { setupTutorial } from './tutorial.js';
 import {
   checkBalanceAnimation,
@@ -22,6 +23,8 @@ import {
 
 import './styles/index.css';
 import './styles/profile.css';
+import './styles/tutorial.css';
+import './styles/admin.css';
 
 function hideSplash() {
   const splash = document.getElementById('splash-screen');
@@ -136,6 +139,7 @@ async function boot() {
   setupEarn();
   setupWallet();
   setupProfile();
+  setupAdmin();
 
   // 5. Initial render
   render();

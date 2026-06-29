@@ -94,6 +94,7 @@
   cursor: grab; touch-action: none;
 }
 .scratch-canvas:active { cursor: grabbing; }
+.scratch.locked .scratch-canvas { cursor: not-allowed; }
 .scratch.revealed .scratch-canvas { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
 .scratch .scratch-hint {
   position: absolute; bottom: 8px; left: 0; right: 0; z-index: 3;

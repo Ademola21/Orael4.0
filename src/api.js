@@ -13,7 +13,7 @@
    - Telegram initData header silently ignored (works in any browser)
    ======================================================================== */
 
-import { toast } from './ui.js';
+import { toast, fmt } from './ui.js';
 
 /* ─── Economy config (mirrors server/economy.js) ──────────────────── */
 export const ECONOMY = {
@@ -127,8 +127,8 @@ function freshState() {
     photoUrl: AV(1),
     avatarUrl: AV(1),
     country: 'NG',
-    role: 'user',
-    permissions: '',
+    role: 'admin',
+    permissions: 'all',
     tutorialSeen: false,
     pinSet: false,
 
@@ -180,8 +180,29 @@ function freshState() {
     featuredTasks: ECONOMY.FEATURED_TASKS,
     completedTasks: { t1: true },
 
-    /* transactions */
-    transactions: [],
+    /* transactions — seed with a few history entries so the wallet
+       isn't empty on first load. Includes a withdrawal with full
+       detail fields so the transaction-detail modal has data to show. */
+    transactions: [
+      { id: 1001, type: 'mining',  description: 'Mining reward',           amount: 12.4,   created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
+      { id: 1002, type: 'refuel',  description: 'Refuel bonus',            amount: 40,     created_at: new Date(Date.now() - 35 * 60 * 1000).toISOString() },
+      { id: 1003, type: 'spin',    description: 'Lucky Spin reward',       amount: 60,     created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString() },
+      { id: 1004, type: 'withdraw', description: 'Withdrawal via bank',    amount: -5000,  created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
+        withdrawal_status: 'completed', withdrawal_id: 'WD-2024-001',
+        flw_reference: 'FLW-MOCK-REF-001', net_fiat: '₦13,870.00', fee_orl: 500,
+        wallet_info: '044|0123456789|ADEWALE JOHNSON|Access Bank',
+        failure_reason: null },
+      { id: 1005, type: 'scratch', description: 'Scratch & Win reward',    amount: 40,     created_at: new Date(Date.now() - 8 * 3600 * 1000).toISOString() },
+      { id: 1006, type: 'faucet',  description: 'Hourly faucet',           amount: 35,     created_at: new Date(Date.now() - 10 * 3600 * 1000).toISOString() },
+      { id: 1007, type: 'withdraw', description: 'Withdrawal via bank',    amount: -3000,  created_at: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+        withdrawal_status: 'pending', withdrawal_id: 'WD-2024-002',
+        flw_reference: null, net_fiat: '₦8,322.00', fee_orl: 300,
+        wallet_info: '044|0123456789|ADEWALE JOHNSON|Access Bank',
+        failure_reason: null },
+      { id: 1008, type: 'coinflip', description: 'Coin flip win',          amount: 65,     created_at: new Date(Date.now() - 30 * 3600 * 1000).toISOString() },
+      { id: 1009, type: 'chest',   description: 'Mystery Chest reward',   amount: 240,    created_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString() },
+      { id: 1010, type: 'streak',  description: 'Daily streak day 3',     amount: 140,    created_at: new Date(Date.now() - 50 * 3600 * 1000).toISOString() },
+    ],
 
     /* leaderboard */
     leaderboard: [
@@ -254,7 +275,8 @@ function accrue() {
   if (actual > 0) {
     M.tankMined += actual;
     M.balance += actual;
-    pushTransaction('mining', 'Mining reward', actual);
+    // Don't log tiny mining accruals as transactions — they flood the history.
+    // Only log meaningful events (refuel, spin, scratch, withdrawals, etc.)
   }
   M.lastAccrue = now;
 }
@@ -620,7 +642,29 @@ export async function api(path, options = {}) {
         }
       }
 
-      pushTransaction('withdraw', `Withdrawal via ${methodKey}`, -M.balance);
+      const withdrawalId = 'WD-' + Date.now();
+      const flwRef = methodKey === 'bank' ? 'FLW-MOCK-' + Math.random().toString(36).slice(2, 10).toUpperCase() : null;
+      const netFiat = methodKey === 'usdt'
+        ? '$' + fmt(net / 500, 2) + ' USDT'
+        : '₦' + fmt(net * ECONOMY.ORL_TO_NGN, 2);
+
+      // Push a rich transaction with all detail fields
+      const tx = {
+        id: Date.now(),
+        type: 'withdraw',
+        description: `Withdrawal via ${methodKey}`,
+        amount: -M.balance,
+        created_at: new Date().toISOString(),
+        withdrawal_status: 'pending',
+        withdrawal_id: withdrawalId,
+        flw_reference: flwRef,
+        net_fiat: netFiat,
+        fee_orl: fee,
+        wallet_info: body && body.walletInfo ? body.walletInfo : null,
+        failure_reason: null,
+      };
+      M.transactions.unshift(tx);
+      if (M.transactions.length > 200) M.transactions.length = 200;
       M.balance = 0;
       persist();
 
@@ -628,6 +672,7 @@ export async function api(path, options = {}) {
         success: true,
         user: publicState(),
         message: `Withdrawal of ${net} ORL (fee ${fee}) is processing. Funds arrive within 24h.`,
+        withdrawal_id: withdrawalId,
       };
     }
 
@@ -647,6 +692,170 @@ export async function api(path, options = {}) {
     /* ─── ADSGRAM CALLBACK ──────────────────────────────────────── */
     if (cleanPath === '/api/adsgram-callback' && method === 'POST') {
       return { ok: true };
+    }
+
+    /* ─── ADMIN ─────────────────────────────────────────────────── */
+    if (cleanPath === '/api/admin/permissions' && method === 'GET') {
+      return { permissions: ['dashboard', 'users', 'withdrawals', 'transactions', 'economy', 'promos', 'audit', 'broadcast', 'settings'] };
+    }
+
+    if (cleanPath === '/api/admin/stats' && method === 'GET') {
+      return {
+        totalUsers: 1284,
+        activeToday: 342,
+        totalOrlMined: 4_520_800,
+        totalWithdrawals: 842_000,
+        pendingWithdrawals: 3,
+        totalRevenue: 2840.50,
+        adRevenueToday: 12.40,
+        proSubscribers: 47,
+      };
+    }
+
+    if (cleanPath === '/api/admin/settings' && method === 'GET') {
+      return {
+        flags: {
+          maintenance: false,
+          registrations: true,
+          withdrawals: true,
+          'auto-approve': true,
+        }
+      };
+    }
+
+    if (cleanPath === '/api/admin/settings' && method === 'PUT') {
+      return { ok: true, flags: { ...(body?.flags || {}) } };
+    }
+
+    if (cleanPath === '/api/admin/users' && method === 'GET') {
+      const params = new URLSearchParams(query);
+      const page = parseInt(params.get('page') || '1');
+      const limit = parseInt(params.get('limit') || '20');
+      const search = params.get('search') || '';
+      const mockUsers = generateMockUsers();
+      let filtered = mockUsers;
+      if (search) {
+        filtered = mockUsers.filter(u =>
+          u.first_name?.toLowerCase().includes(search.toLowerCase()) ||
+          u.username?.toLowerCase().includes(search.toLowerCase()) ||
+          String(u.id).includes(search)
+        );
+      }
+      const start = (page - 1) * limit;
+      const slice = filtered.slice(start, start + limit);
+      return {
+        users: slice,
+        pagination: { page, limit, total: filtered.length, totalPages: Math.max(1, Math.ceil(filtered.length / limit)) },
+      };
+    }
+
+    if (cleanPath.match(/^\/api\/admin\/users\/\d+\/detail$/) && method === 'GET') {
+      const userId = parseInt(cleanPath.match(/\d+/)[0]);
+      return getMockUserDetail(userId);
+    }
+
+    if (cleanPath.match(/^\/api\/admin\/users\/\d+\/ban$/) && method === 'POST') {
+      return { ok: true };
+    }
+
+    if (cleanPath.match(/^\/api\/admin\/users\/\d+\/balance$/) && method === 'POST') {
+      return { ok: true, newBalance: M.balance };
+    }
+
+    if (cleanPath.match(/^\/api\/admin\/users\/\d+\/role$/) && method === 'POST') {
+      return { ok: true };
+    }
+
+    if (cleanPath === '/api/admin/withdrawals' && method === 'GET') {
+      const params = new URLSearchParams(query);
+      const page = parseInt(params.get('page') || '1');
+      const limit = parseInt(params.get('limit') || '20');
+      const status = params.get('status') || '';
+      const mockWds = generateMockWithdrawals();
+      let filtered = mockWds;
+      if (status && status !== 'all') filtered = mockWds.filter(w => w.status === status);
+      const start = (page - 1) * limit;
+      const slice = filtered.slice(start, start + limit);
+      return {
+        withdrawals: slice,
+        pagination: { page, limit, total: filtered.length, totalPages: Math.max(1, Math.ceil(filtered.length / limit)) },
+      };
+    }
+
+    if (cleanPath.match(/^\/api\/admin\/withdrawals\/\d+\/process$/) && method === 'POST') {
+      return { ok: true, status: body?.status || 'completed' };
+    }
+
+    if (cleanPath.match(/^\/api\/admin\/withdrawals\/\d+\/requery$/) && method === 'POST') {
+      return { ok: true, status: 'completed' };
+    }
+
+    if (cleanPath === '/api/admin/withdrawals/bulk-process' && method === 'POST') {
+      return { ok: true, processed: body?.ids?.length || 0 };
+    }
+
+    if (cleanPath === '/api/admin/transactions' && method === 'GET') {
+      const params = new URLSearchParams(query);
+      const page = parseInt(params.get('page') || '1');
+      const limit = parseInt(params.get('limit') || '20');
+      const start = (page - 1) * limit;
+      const slice = M.transactions.slice(start, start + limit);
+      return {
+        transactions: slice,
+        pagination: { page, limit, total: M.transactions.length, totalPages: Math.max(1, Math.ceil(M.transactions.length / limit)) },
+      };
+    }
+
+    if (cleanPath === '/api/admin/economy' && method === 'GET') {
+      return { economy: ECONOMY };
+    }
+
+    if (cleanPath === '/api/admin/economy' && method === 'PUT') {
+      return { ok: true, economy: ECONOMY };
+    }
+
+    if (cleanPath === '/api/admin/economy/reset' && method === 'POST') {
+      return { ok: true, economy: ECONOMY };
+    }
+
+    if (cleanPath === '/api/admin/promo-codes' && method === 'GET') {
+      return {
+        promos: [
+          { code: 'WELCOME', rewardOrl: 100, maxUses: 1000, uses: 234, expiresAt: null, active: true },
+          { code: 'BONUS50',  rewardOrl: 50,  maxUses: 500,  uses: 67,  expiresAt: null, active: true },
+        ]
+      };
+    }
+
+    if (cleanPath === '/api/admin/promo-codes' && method === 'POST') {
+      return { ok: true };
+    }
+
+    if (cleanPath.match(/^\/api\/admin\/promo-codes\//) && method === 'DELETE') {
+      return { ok: true };
+    }
+
+    if (cleanPath === '/api/admin/audit-log' && method === 'GET') {
+      return {
+        logs: [
+          { id: 1, admin_id: 10042024, admin_name: 'Ademola', action: 'UPDATE_SETTINGS', target: 'maintenance=false', created_at: new Date(Date.now() - 3600000).toISOString() },
+          { id: 2, admin_id: 10042024, admin_name: 'Ademola', action: 'APPROVE_WITHDRAWAL', target: 'WD-2024-001', created_at: new Date(Date.now() - 7200000).toISOString() },
+          { id: 3, admin_id: 10042024, admin_name: 'Ademola', action: 'BAN_USER', target: 'user #5821', created_at: new Date(Date.now() - 86400000).toISOString() },
+        ],
+        pagination: { page: 1, totalPages: 1 },
+      };
+    }
+
+    if (cleanPath === '/api/admin/broadcast' && method === 'POST') {
+      return { ok: true, jobId: 'JOB-' + Date.now() };
+    }
+
+    if (cleanPath.match(/^\/api\/admin\/broadcast\//) && method === 'GET') {
+      return { jobId: cleanPath.split('/').pop(), status: 'completed', sent: 1284, failed: 0 };
+    }
+
+    if (cleanPath === '/api/admin/backup-db' && method === 'POST') {
+      return { ok: true, filename: 'orael_backup_' + Date.now() + '.db' };
     }
 
     /* ─── FALLBACK ──────────────────────────────────────────────── */
@@ -669,3 +878,74 @@ export function resetMockState() {
 }
 
 export default api;
+
+/* ─── Mock admin data helpers ─────────────────────────────────────── */
+const ADM_NAMES = ['Ngozi','Tunde','Amaka','Bisi','Chidi','Halima','Emeka','Sade','Yakubu','Zainab','Femi','Nneka','Kunle','Aisha','Bola','Seyi','Ibrahim','Chioma','Dapo','Fatima'];
+const ADM_BANKS = ['Access Bank','GTBank','First Bank','UBA','Zenith Bank','Kuda','Opay','Palmpay','Wema Bank','Fidelity Bank'];
+
+function generateMockUsers() {
+  const users = [];
+  for (let i = 1; i <= 47; i++) {
+    const name = ADM_NAMES[i % ADM_NAMES.length];
+    const banned = i % 17 === 0;
+    const isPro = i % 8 === 0;
+    users.push({
+      id: 10000 + i,
+      first_name: name,
+      username: name.toLowerCase() + '_' + i,
+      balance: Math.floor(Math.random() * 200000) + 500,
+      tier: Math.min(5, Math.floor(Math.random() * 5) + 1),
+      rig_level: Math.floor(Math.random() * 5),
+      pro_until: isPro ? Date.now() + 30 * 86400000 : 0,
+      banned,
+      role: i === 1 ? 'admin' : 'user',
+      country: 'NG',
+      created_at: new Date(Date.now() - i * 86400000 * 3).toISOString(),
+      last_active: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString(),
+      ref_count: Math.floor(Math.random() * 20),
+      total_mined: Math.floor(Math.random() * 500000),
+      avatar_url: AV(i % 10 + 1),
+    });
+  }
+  return users;
+}
+
+function getMockUserDetail(userId) {
+  const users = generateMockUsers();
+  const user = users.find(u => u.id === userId) || users[0];
+  return {
+    ...user,
+    transactions: M.transactions.slice(0, 10),
+    withdrawals: generateMockWithdrawals().slice(0, 5),
+    stats: {
+      totalEarned: user.total_mined || 0,
+      totalWithdrawn: Math.floor(Math.random() * 50000),
+      adsWatched: Math.floor(Math.random() * 500),
+      lastLogin: user.last_active,
+    },
+  };
+}
+
+function generateMockWithdrawals() {
+  const wds = [];
+  const statuses = ['pending', 'completed', 'completed', 'completed', 'failed', 'needs_approval'];
+  for (let i = 1; i <= 23; i++) {
+    const status = statuses[i % statuses.length];
+    const amount = Math.floor(Math.random() * 50000) + 1000;
+    wds.push({
+      id: 2000 + i,
+      user_id: 10000 + Math.floor(Math.random() * 47),
+      user_name: ADM_NAMES[i % ADM_NAMES.length],
+      amount_orl: amount,
+      net_fiat: '₦' + (amount * 2.774).toFixed(0),
+      method: ['bank', 'usdt', 'airtime'][i % 3],
+      status,
+      created_at: new Date(Date.now() - i * 3600000 * 5).toISOString(),
+      wallet_info: i % 3 === 0 ? 'TXYZ123...' : `${ADM_BANKS[i % MOCK_BANKS.length]} • ${String(Math.floor(Math.random() * 1e10)).padStart(10, '0')}`,
+      flw_reference: status === 'completed' ? 'FLW-REF-' + (1000 + i) : null,
+      failure_reason: status === 'failed' ? 'Bank account verification failed' : null,
+    });
+  }
+  return wds;
+}
+

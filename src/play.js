@@ -157,6 +157,7 @@ function animateWheel(prizeIndex, prizeAmount) {
    ========================================================================= */
 let scratchReady = false;
 let scratchRevealed = false;
+let scratchUnlocked = false;  // ← gate: canvas only interactive after "Get a scratch card"
 
 function initScratchCanvas() {
   const canvas = $('scratchCanvas');
@@ -190,12 +191,12 @@ function initScratchCanvas() {
   }
   ctx.globalAlpha = 1;
 
-  // "SCRATCH HERE" label on the foil
+  // Label on the foil — changes based on unlock state
   ctx.fillStyle = 'rgba(28, 17, 9, 0.55)';
   ctx.font = '700 12px "Space Grotesk", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('SCRATCH TO REVEAL', rect.width / 2, rect.height / 2);
+  ctx.fillText(scratchUnlocked ? 'SCRATCH TO REVEAL' : 'TAP "GET A SCRATCH CARD"', rect.width / 2, rect.height / 2);
 
   ctx.globalCompositeOperation = 'destination-out';
   ctx.lineCap = 'round';
@@ -224,7 +225,7 @@ function initScratchCanvas() {
   };
 
   const start = (e) => {
-    if (scratchRevealed) return;
+    if (scratchRevealed || !scratchUnlocked) return;  // ← gated
     drawing = true;
     last = pos(e);
     e.preventDefault();
@@ -276,7 +277,8 @@ function loadScratchCard(prize) {
   const prizeEl = $('scratchPrize');
   if (!wrap) return;
   scratchRevealed = false;
-  wrap.classList.remove('revealed');
+  scratchUnlocked = true;  // ← unlock the canvas for scratching
+  wrap.classList.remove('revealed', 'locked');
   getState()._pendingScratchPrize = prize;
   if (prizeEl) {
     prizeEl.innerHTML = prize > 0
@@ -443,7 +445,12 @@ export function setupPlay() {
   // Init the canvas once mounted AND whenever the Play screen is shown (the
   // wrapper has 0 size while the screen is hidden, so a boot-time init produces
   // a 1x1 canvas — re-init on navigation gives it real dimensions).
-  setTimeout(initScratchCanvas, 50);
+  // The canvas starts LOCKED — user must click "Get a scratch card" to unlock.
+  setTimeout(() => {
+    const wrap = $('scratch');
+    if (wrap) wrap.classList.add('locked');
+    initScratchCanvas();
+  }, 50);
   const playNav = document.querySelector('.nav-btn[data-screen="play"]');
   if (playNav) playNav.addEventListener('click', () => setTimeout(initScratchCanvas, 120));
 

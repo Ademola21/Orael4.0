@@ -314,8 +314,74 @@ function flipCoin(result /* 'heads' | 'tails' */) {
   const targetFace = result === 'tails' ? 180 : 0;
   const base = cfRot % 360;
   const delta = (targetFace - base + 360) % 360;
-  cfRot += 360 * 5 + delta;
-  coin.style.transform = `rotateY(${cfRot}deg)`;
+  const startRot = cfRot;
+  const endRot = cfRot + 360 * 10 + delta;  // 10 full spins for drama
+  cfRot = endRot;
+
+  // ── Dramatic 3-second coin toss ──────────────────────────────────
+  // The coin shoots up, spins rapidly in the air, then falls back down
+  // and lands with a small bounce. Uses requestAnimationFrame for
+  // reliable full-duration animation (same approach as the spin wheel).
+  //
+  // Three motion components combined each frame:
+  //   1. rotateY — the spinning (eased: fast start, slow finish)
+  //   2. translateY — the arc (up then back down, peaking at 50%)
+  //   3. scale — grows slightly at apex (perspective illusion)
+  //
+  // Timeline (3.0s total):
+  //   0-100% → continuous spin (eased)
+  //   0-50%  → coin rises from 0 to -120px (apex)
+  //   50-100% → coin falls back to 0
+  //   95-100% → small landing wobble (translateY bounce)
+  const duration = 3000;
+  const startTime = performance.now();
+  const apexHeight = 120;  // pixels the coin rises at its peak
+
+  // Spin easing: keeps the coin visibly rotating across the full 3s
+  function spinEase(t) {
+    if (t < 0.25) return (t / 0.25) * 0.45;           // fast start
+    if (t < 0.50) return 0.45 + ((t - 0.25) / 0.25) * 0.25;
+    if (t < 0.75) return 0.70 + ((t - 0.50) / 0.25) * 0.15;
+    return 0.85 + ((t - 0.75) / 0.25) * 0.15;          // gentle landing
+  }
+
+  // Vertical arc: sine curve for a smooth up-and-down trajectory
+  // Returns a value from 0 → -apexHeight → 0 over t=0 → 0.5 → 1
+  function arcHeight(t) {
+    // Sin curve peaks at t=0.5, returns 0 at t=0 and t=1
+    return -apexHeight * Math.sin(t * Math.PI);
+  }
+
+  // Scale: coin appears larger at apex (closer to viewer), normal at start/end
+  function scaleFactor(t) {
+    return 1 + 0.25 * Math.sin(t * Math.PI);  // 1.0 → 1.25 → 1.0
+  }
+
+  // Landing wobble: small bounce in the last 5% of the animation
+  function wobble(t) {
+    if (t < 0.95) return 0;
+    const wt = (t - 0.95) / 0.05;  // 0 → 1 over last 5%
+    return -8 * Math.sin(wt * Math.PI);  // small downward bounce
+  }
+
+  function frame(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / duration, 1);
+
+    const spinProgress = spinEase(t);
+    const currentRot = startRot + (endRot - startRot) * spinProgress;
+    const ty = arcHeight(t) + wobble(t);
+    const sc = scaleFactor(t);
+
+    coin.style.transform = `translateY(${ty}px) scale(${sc}) rotateY(${currentRot}deg)`;
+
+    if (t < 1 && cfBusy) {
+      requestAnimationFrame(frame);
+    } else {
+      coin.style.transform = `translateY(0px) scale(1) rotateY(${endRot}deg)`;
+    }
+  }
+  requestAnimationFrame(frame);
 }
 
 /* ========================================================================
@@ -510,7 +576,7 @@ export function setupPlay() {
           }
           render();
           cfBusy = false;
-        }, 1850);
+        }, 3100);  // wait for the 3s coin toss animation + 100ms buffer
       } catch (e) {
         cfBusy = false;
         refreshEconomyCopy();

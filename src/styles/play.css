@@ -139,12 +139,21 @@
    COIN FLIP — true 3D coin with two faces
    ========================================================================= */
 .coinflip-stage { display: flex; flex-direction: column; align-items: center; padding: 14px 0; gap: 16px; }
-.cf-scene { width: 130px; height: 130px; perspective: 700px; }
+/* Extra height + overflow visible so the coin can fly up during the toss */
+.cf-scene {
+  width: 130px; height: 130px; perspective: 700px;
+  position: relative;
+  /* Make sure the coin isn't clipped when it flies up */
+  overflow: visible;
+}
 .cf-coin {
   position: relative; width: 100%; height: 100%; transform-style: preserve-3d;
   transform: rotateY(0deg);
-  transition: transform 1.8s cubic-bezier(0.22, 0.7, 0.2, 1);
+  /* No CSS transition — animation is handled by requestAnimationFrame
+     in play.js flipCoin() for reliable full-duration rotation. */
   filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.55));
+  /* transform-origin at bottom so the coin "launches" from the ground */
+  transform-origin: center bottom;
 }
 .cf-face {
   position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden;

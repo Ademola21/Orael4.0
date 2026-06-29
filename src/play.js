@@ -26,17 +26,12 @@ let wheelRot = 0;
 let spinning = false;
 
 /**
- * Build the wheel SVG with sapphire+gold segments. Prize values come from the
- * server economy config so the displayed wheel always matches what the server
- * will actually pay. Called on boot AND whenever the economy config changes.
+ * Build the inline wheel SVG with sapphire+gold segments. Prize values come
+ * from the server economy config so the displayed wheel always matches what
+ * the server will actually pay. Called on boot.
  */
 export function buildWheel() {
-  buildWheelForElement('wheel', '.wheel-bezel');
-  buildWheelForElement('wheelModal', '#wheelModalBezel');
-}
-
-function buildWheelForElement(svgId, bezelSelector) {
-  const svg = $(svgId);
+  const svg = $('wheel');
   if (!svg) return;
 
   const prizes = econ().WHEEL_PRIZES || [120, 60, 300, 0, 40, 20, 600, 8];
@@ -71,14 +66,14 @@ function buildWheelForElement(svgId, bezelSelector) {
   }
   svg.innerHTML = html;
 
-  // Build the gold stud bezel ring (16 dots)
-  const bezel = document.querySelector(bezelSelector);
+  // Build the gold stud bezel ring (16 dots) on the inline wheel
+  const bezel = document.querySelector('.wheel-bezel');
   if (bezel && bezel.innerHTML === '') {
     let dots = '';
     const dotN = 16;
     for (let i = 0; i < dotN; i++) {
       const ang = (i / dotN) * 360;
-      dots += `<i style="transform: rotate(${ang}deg) translate(0, -118px)"></i>`;
+      dots += `<i style="transform: rotate(${ang}deg) translate(0, -133px)"></i>`;
     }
     bezel.innerHTML = dots;
   }
@@ -97,20 +92,16 @@ function animateWheel(prizeIndex, prizeAmount) {
   const endRot = wheelRot + 360 * 6 + delta;
   wheelRot = endRot;
 
-  const wheelEl = $('wheelModal');
-  const closeBtn = $('spinCloseBtn');
-  if (closeBtn) closeBtn.style.display = 'none';
+  // Spin the INLINE wheel (no more fullscreen modal)
+  const wheelEl = $('wheel');
 
   if (wheelEl) {
     // Manual requestAnimationFrame animation — the most reliable approach.
-    // CSS transitions and Web Animations API were both getting interfered
-    // with (cancelled or overridden by the 1-second render() interval).
     // By directly setting style.transform on every frame via rAF, nothing
     // can cancel or override the animation.
     //
     // Custom easing function keeps the wheel visibly rotating across the
-    // FULL 4.6s duration (previous cubic-bezier curves were too
-    // front-loaded, reaching 90%+ rotation in the first second):
+    // FULL 4.6s duration:
     //   0-25% of time → 45% of rotation  (fast start)
     //  25-50% of time → 25% of rotation  (medium)
     //  50-75% of time → 15% of rotation  (slowing)
@@ -143,17 +134,13 @@ function animateWheel(prizeIndex, prizeAmount) {
 
   setTimeout(() => {
     spinning = false;
-    if (closeBtn) closeBtn.style.display = '';
 
     // Restore spin button
-    const spinModalBtnEl = $('spinModalBtn');
-    if (spinModalBtnEl) {
-      spinModalBtnEl.disabled = false;
-      spinModalBtnEl.textContent = 'Spin the wheel';
+    const spinBtnEl = $('spinBtn');
+    if (spinBtnEl) {
+      spinBtnEl.disabled = false;
+      spinBtnEl.textContent = 'Spin the wheel';
     }
-
-    const spinVeil = $('spinVeil');
-    if (spinVeil) spinVeil.classList.remove('show');
 
     if (prizeAmount > 0) {
       reward(prizeAmount, 'Lucky spin!', 'Watch an ad to spin again!');
@@ -402,76 +389,43 @@ export function setupPlay() {
   }
   refreshEconomyCopy();
 
-  /* ---- Spin ---- */
+  /* ---- Spin (inline wheel — no fullscreen modal) ---- */
   const spinBtn = $('spinBtn');
-  const spinVeil = $('spinVeil');
-  const spinCloseBtn = $('spinCloseBtn');
-  const spinModalBtn = $('spinModalBtn');
-  const wheelModalHub = $('wheelModalHub');
-  const inlineWheel = $('wheel');
+  const wheelHub = document.querySelector('.wheel-hub');
 
-  if (spinBtn) {
-    spinBtn.addEventListener('click', () => {
-      haptic('light');
-      buildWheel(); // ensure both wheels match current economy
-      if (spinVeil) spinVeil.classList.add('show');
-    });
-  }
-  if (inlineWheel) {
-    inlineWheel.addEventListener('click', () => {
-      haptic('light');
-      buildWheel();
-      if (spinVeil) spinVeil.classList.add('show');
-    });
-  }
-  if (spinCloseBtn) {
-    spinCloseBtn.addEventListener('click', () => {
-      if (spinning) return;
-      haptic('light');
-      if (spinVeil) spinVeil.classList.remove('show');
-    });
-  }
-  if (spinVeil) {
-    spinVeil.addEventListener('click', (e) => {
-      if (spinning) return;
-      if (e.target === spinVeil) {
-        haptic('light');
-        spinVeil.classList.remove('show');
-      }
-    });
-  }
-
-  const triggerModalSpin = () => {
+  const triggerSpin = () => {
     if (spinning) return;
     // Show immediate visual feedback on the button so the user knows
     // the spin is coming (the API call takes ~200ms)
-    if (spinModalBtn) {
-      spinModalBtn.disabled = true;
-      spinModalBtn.textContent = 'Spinning…';
+    if (spinBtn) {
+      spinBtn.disabled = true;
+      spinBtn.textContent = 'Spinning…';
     }
     const doSpin = async () => {
       try {
         const res = await api('/api/play/spin', { method: 'POST' });
         updateState(res);
-        // Note: buildWheel() is NOT called here — it was already called
-        // when the modal opened, and calling it again right before
-        // animateWheel() causes a race condition where the browser skips
-        // the CSS transition (innerHTML change + transition + transform
-        // all in one frame = no animation).
+        // buildWheel() is NOT called here — it was already called on boot,
+        // and calling it again right before animateWheel() causes a race
+        // condition where the browser skips the animation.
         animateWheel(res.prizeIndex ?? 0, res.prizeAmount ?? 0);
       } catch (e) {
         // Restore button on error
-        if (spinModalBtn) {
-          spinModalBtn.disabled = false;
-          spinModalBtn.textContent = 'Spin the wheel';
+        if (spinBtn) {
+          spinBtn.disabled = false;
+          spinBtn.textContent = 'Spin the wheel';
         }
       }
     };
     playAd('Loading spin…', 'Watch an ad to spin the wheel.', 10, doSpin);
   };
 
-  if (spinModalBtn) spinModalBtn.addEventListener('click', triggerModalSpin);
-  if (wheelModalHub) wheelModalHub.addEventListener('click', triggerModalSpin);
+  if (spinBtn) spinBtn.addEventListener('click', triggerSpin);
+  // Also allow clicking the wheel hub (center "SPIN" button) to trigger
+  if (wheelHub) {
+    wheelHub.style.cursor = 'pointer';
+    wheelHub.addEventListener('click', triggerSpin);
+  }
 
   /* ---- Scratch card ---- */
   const scratchBtn = $('scratchBtn');

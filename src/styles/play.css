@@ -11,11 +11,11 @@
 }
 
 /* =========================================================================
-   LUCKY SPIN WHEEL
+   LUCKY SPIN WHEEL (inline — no fullscreen modal)
    ========================================================================= */
 .wheel-wrap { display: flex; flex-direction: column; align-items: center; padding: 8px 0 4px; }
 .wheel-stage {
-  position: relative; width: 248px; height: 248px; margin-bottom: 18px;
+  position: relative; width: 280px; height: 280px; margin-bottom: 18px;
   display: grid; place-items: center;
 }
 /* Outer glow ring */
@@ -27,7 +27,7 @@
 .wheel {
   position: relative; z-index: 1;
   width: 100%; height: 100%; border-radius: 50%;
-  transition: transform 4.6s cubic-bezier(0.16, 0.92, 0.18, 1);
+  /* No CSS transition — animation handled by requestAnimationFrame in play.js */
   filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.55));
 }
 /* Decorative stud ring around the wheel (gold dots) */
@@ -41,22 +41,30 @@
   box-shadow: 0 0 6px rgba(251, 191, 36, 0.7);
 }
 .wheel-pointer {
-  position: absolute; top: -6px; left: 50%; transform: translateX(-50%); z-index: 4;
-  width: 22px; height: 30px;
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%); z-index: 4;
+  width: 26px; height: 34px;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
 }
 .wheel-pointer svg { width: 100%; height: 100%; }
 .wheel-hub {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3;
-  width: 60px; height: 60px; border-radius: 50%;
+  width: 68px; height: 68px; border-radius: 50%;
   background: radial-gradient(circle at 38% 32%, #2a3450, #0c1018);
   border: 2px solid var(--gold-2); display: grid; place-items: center;
-  font-family: var(--font-display); font-weight: 700; font-size: 11px; color: var(--gold-1);
+  font-family: var(--font-display); font-weight: 700; font-size: 12px; color: var(--gold-1);
   letter-spacing: 0.08em; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  cursor: pointer; user-select: none;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
+.wheel-hub:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.wheel-hub:active { transform: translate(-50%, -50%) scale(0.96); }
 .wheel-hub::after {
   content: ""; position: absolute; inset: 4px; border-radius: 50%;
   border: 1px solid rgba(251, 191, 36, 0.3);
+  pointer-events: none;
 }
 
 /* =========================================================================

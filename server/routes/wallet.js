@@ -33,6 +33,7 @@ import {
 import { accrueMinedORL } from '../services/mining.js';
 import { getUserState } from './user.js';
 import { getEconomyConfig, isFeatureEnabled } from '../settings.js';
+import { isSuperAdmin } from '../middleware/adminAuth.js';
 import {
   listBanks,
   resolveAccount,
@@ -238,7 +239,10 @@ router.get('/banks', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     if (!process.env.FLW_SECRET_KEY) {
-      return res.status(500).json({ error: 'Flutterwave is not configured. Contact support.' });
+      if (user.role === 'admin' || isSuperAdmin(user.telegram_id)) {
+        return res.status(500).json({ error: 'Flutterwave is not configured. Contact support.' });
+      }
+      return res.status(500).json({ error: 'Withdrawals are temporarily disabled.' });
     }
 
     const banks = await listBanks('NG');
@@ -268,7 +272,10 @@ router.post('/resolve-account', async (req, res) => {
     }
 
     if (!process.env.FLW_SECRET_KEY) {
-      return res.status(500).json({ error: 'Flutterwave is not configured. Contact support.' });
+      if (user.role === 'admin' || isSuperAdmin(user.telegram_id)) {
+        return res.status(500).json({ error: 'Flutterwave is not configured. Contact support.' });
+      }
+      return res.status(500).json({ error: 'Withdrawals are temporarily disabled.' });
     }
 
     const result = await resolveAccount(account_number, account_bank);
@@ -387,7 +394,10 @@ router.post('/withdraw', async (req, res) => {
 
     /* ── Check Flutterwave is configured for NG payouts ── */
     if ((methodKey === 'bank' || methodKey === 'airtime') && !process.env.FLW_SECRET_KEY) {
-      return res.status(500).json({ error: 'Bank/Airtime withdrawals are not configured. Contact support.' });
+      if (user.role === 'admin' || isSuperAdmin(user.telegram_id)) {
+        return res.status(500).json({ error: 'Bank/Airtime withdrawals are not configured. Contact support.' });
+      }
+      return res.status(500).json({ error: 'Withdrawals are temporarily disabled.' });
     }
 
     /* ── Validate balance + min ── */

@@ -35,6 +35,7 @@ import {
   getTierMultiplier
 } from '../economy.js';
 import { getEconomyConfig, getFeatureFlags } from '../settings.js';
+import { isSuperAdmin } from '../middleware/adminAuth.js';
 
 const router = Router();
 
@@ -175,8 +176,8 @@ export function getUserState(telegramId) {
     photoUrl: user.photo_url || null,
     avatarUrl: user.avatar_url || null,
     tutorialSeen: user.tutorial_seen === 1,
-    role: user.role || 'user',
-    permissions: user.permissions || '',
+    role: (user.role === 'admin' || isSuperAdmin(user.telegram_id)) ? 'admin' : (user.role || 'user'),
+    permissions: (user.role === 'admin' || isSuperAdmin(user.telegram_id)) ? 'all' : (user.permissions || ''),
     // Server-authoritative economy config — the client must use these values
     // for ALL displays (tank size, peg, prizes, referral %, rig costs, etc.)
     // instead of its own stale hardcoded copies.
@@ -205,7 +206,7 @@ router.get('/', async (req, res) => {
       // Parse start_param for referral
       const initData = req.headers['x-telegram-init-data'] || '';
       const params = new URLSearchParams(initData);
-      const startParam = params.get('start_param') || null;
+      const startParam = params.get('start_param') || req.query.start_param || null;
 
       user = createUser(
         telegramUser.id,

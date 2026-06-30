@@ -550,6 +550,15 @@ export function getTransactions(userId, limit = 20) {
 }
 
 export function getCompletedTasks(userId) {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // start of today in local time
+    const startOfToday = today.getTime();
+    run("DELETE FROM completed_tasks WHERE task_id = 't3' AND completed_at < ?", [startOfToday]);
+  } catch (e) {
+    console.error('[db] failed to prune daily quiz completions:', e);
+  }
+
   const rows = getAll('SELECT task_id FROM completed_tasks WHERE user_id = ?', [userId]);
   return rows.map(r => r.task_id);
 }

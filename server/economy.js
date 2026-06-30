@@ -125,7 +125,6 @@ export const REFERRAL_L2_PCT = 0.02; // 2% second-level
 
 // ── Earn tasks (1 ad per task → 40 ORL = 23.8% payout ratio ✅) ──
 export const TASKS = [
-  { id: 't1', title: 'Watch a sponsored video', sub: '15s · rewarded ad', reward: 40, url: '' },
   { id: 't3', title: 'Daily quiz',              sub: 'Answer 1 question', reward: 35, url: '' },
 ];
 

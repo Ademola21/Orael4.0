@@ -35,7 +35,11 @@ export function initTelegram() {
   const user = tg.initDataUnsafe?.user || null;
 
   // Extract start parameter (for deep links / referrals)
-  const startParam = tg.initDataUnsafe?.start_param || '';
+  let startParam = tg.initDataUnsafe?.start_param || '';
+  if (!startParam) {
+    const urlParams = new URLSearchParams(window.location.search);
+    startParam = urlParams.get('start_param') || urlParams.get('start_app') || '';
+  }
 
   return { tg, user, startParam };
 }

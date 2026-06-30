@@ -83,6 +83,10 @@ async function boot() {
     updateState(serverState);
   } catch (error) {
     console.error('Failed to fetch user state on boot:', error);
+    if (error.message === 'maintenance' || error.message === 'Account banned' || error.message === 'Telegram-only access') {
+      hideSplash();
+      return;
+    }
   }
 
   // Mark state as loaded to render balance/energy

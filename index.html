@@ -582,12 +582,11 @@ console.error = function(...args) {
 </div>
 
 <!-- ===================== PROFILE OVERLAY ===================== -->
-<!-- Tap the topbar avatar to open. Houses avatar picker, Pro subscription,
-     and a link to the tier-progression modal. -->
 <div class="modal-veil" id="profileVeil">
   <div class="modal profile-modal">
     <button class="profile-close" id="profileClose" aria-label="Close">&times;</button>
 
+    <!-- Head: avatar + identity -->
     <div class="profile-head">
       <div class="profile-avatar" id="profileAvatar">A</div>
       <div class="profile-identity">
@@ -614,36 +613,45 @@ console.error = function(...args) {
       </div>
     </div>
 
-    <!-- Pro subscription (relocated from wallet) -->
-    <div class="profile-section pro-section">
-      <div class="pro-head">
-        <svg class="pro-crown" viewBox="0 0 24 24" fill="none"><path d="M3 7l5 4 4-7 4 7 5-4-2 12H5L3 7z" stroke="#fbbf24" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 20h14" stroke="#fbbf24" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <div><div class="ph-t">Orael Pro</div><div class="ph-s">Mine 2× faster · save on fees · free daily chest</div></div>
-      </div>
-      <ul class="pro-perks">
-        <li><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>2× base mining rate, always on</li>
-        <li><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>5% withdrawal fee (vs 10%) + priority payouts</li>
-        <li><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Free daily mystery chest (150-200 ORL, no ad needed)</li>
-        <li><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Exclusive Pro badge</li>
-      </ul>
-      <button class="btn btn-stars" id="proBtn">
-        <svg class="stars-ico" viewBox="0 0 24 24" fill="#1c1109"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7L12 2z"/></svg>
-        Go Pro · 250 Telegram Stars / mo
-      </button>
-      <button class="btn btn-ghost" id="proChestBtn" style="margin-top:8px;display:none">Claim free daily chest</button>
-      <button class="btn btn-ghost" id="proDevBtn" style="margin-top:8px;display:none">Activate Pro (dev preview)</button>
-    </div>
-
-    <!-- Promo code redemption -->
+    <!-- Pro subscription -->
     <div class="profile-section">
-      <div class="profile-section-title">Redeem Promo Code</div>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <input type="text" id="promoInput" placeholder="ENTER CODE" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--line-strong);background:var(--bg-inset);color:var(--ink);font-size:13px;text-transform:uppercase;outline:none;font-family:var(--font-mono);" />
-        <button class="btn btn-primary" id="promoBtn" style="padding:0 18px;height:42px;font-size:13px;margin:0;flex-shrink:0;">Redeem</button>
+      <div class="profile-section-title">Orael Pro</div>
+      <div class="pro-section">
+        <div class="pro-head">
+          <svg class="pro-crown" viewBox="0 0 24 24" fill="none"><path d="M3 7l5 4 4-7 4 7 5-4-2 12H5L3 7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 20h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <div>
+            <div class="ph-t">Go Pro</div>
+            <div class="ph-s">2× mining · half-fee withdrawals · daily chest</div>
+          </div>
+        </div>
+        <ul class="pro-perks">
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>2× base mining rate, always on</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>5% withdrawal fee (vs 10%) + priority payouts</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Free daily mystery chest (150-200 ORL, no ad needed)</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Exclusive Pro badge</li>
+        </ul>
+        <button class="btn btn-stars" id="proBtn">
+          <svg class="stars-ico" viewBox="0 0 24 24" fill="#1c1109"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7L12 2z"/></svg>
+          Go Pro · 250 Stars / mo
+        </button>
+        <button class="btn btn-ghost" id="proChestBtn" style="margin-top:8px;display:none">Claim free daily chest</button>
+        <button class="btn btn-ghost" id="proDevBtn" style="margin-top:8px;display:none">Activate Pro (dev preview)</button>
       </div>
     </div>
 
-    <button class="btn btn-ghost" id="profileViewTiers" style="width:100%;margin-top:12px">View tier progress</button>
+    <!-- Promo code -->
+    <div class="profile-section">
+      <div class="profile-section-title">Promo Code</div>
+      <div class="promo-row">
+        <input type="text" id="promoInput" class="promo-input" placeholder="ENTER CODE" />
+        <button class="btn btn-primary promo-btn" id="promoBtn">Redeem</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="profile-footer">
+      <button class="btn btn-ghost" id="profileViewTiers">View tier progress</button>
+    </div>
   </div>
 </div>
 

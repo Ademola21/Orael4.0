@@ -120,6 +120,17 @@ async function handleMessage(msg) {
     return;
   }
 
+  // Check maintenance mode (unless the user is super admin)
+  const { getFeatureFlags } = await import('./settings.js');
+  const { isSuperAdmin } = await import('./middleware/adminAuth.js');
+  if (getFeatureFlags().maintenance_mode === true && !isSuperAdmin(chatId)) {
+    await callTelegram('sendMessage', {
+      chat_id: chatId,
+      text: `⚠️ Orael is currently undergoing scheduled maintenance. Please check back later!`
+    });
+    return;
+  }
+
   if (text.startsWith('/start')) {
     console.log(`[bot] User ${firstName} (${chatId}) started the bot.`);
 

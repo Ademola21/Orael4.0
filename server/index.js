@@ -69,7 +69,7 @@ app.use(helmet({
 if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {
     // Allow webhook endpoints to skip HTTPS redirect (Flutterwave may POST over HTTP from some regions)
-    if (req.path === '/api/flutterwave-webhook' || req.path === '/api/adsgram-callback') {
+    if (req.path === '/api/flutterwave-webhook' || req.path === '/api/adsgram-callback' || req.path === '/api/health') {
       return next();
     }
     // Check for HTTPS via Cloudflare/proxy headers

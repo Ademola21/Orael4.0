@@ -43,6 +43,23 @@ services:
     networks:
       - orael-net
 
+  bot:
+    build: .
+    container_name: orael-bot
+    restart: unless-stopped
+    command: ["node", "server/bot.js"]
+    healthcheck:
+      disable: true
+    env_file:
+      - .env
+    volumes:
+      - orael-data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - app
+    networks:
+      - orael-net
+
   # Auto-backup service — runs backup.sh every 6 hours
   backup:
     image: alpine:latest

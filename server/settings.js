@@ -36,7 +36,7 @@ export function invalidateEconomyCache() {
  * Default feature flags. Admins can flip these from the panel.
  */
 export const DEFAULT_FLAGS = {
-  maintenance_mode: false,       // when true, all non-admin write actions are blocked
+  maintenance_mode: true,       // when true, all non-admin write actions are blocked
   withdrawals_enabled: true,     // when false, new withdrawal requests are blocked
   games_enabled: true,           // when false, spin/scratch/coinflip/chest/lottery blocked
   mining_enabled: true,          // when false, accrual pauses (refuel blocked)

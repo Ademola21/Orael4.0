@@ -7,7 +7,7 @@
 # Dependencies (re-installed cleanly inside the container)
 node_modules
 bun.lock
-package-lock.json
+# package-lock.json
 
 # Build output (rebuilt inside the container)
 dist

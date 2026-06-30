@@ -23,7 +23,7 @@ const MAX_AUTH_AGE_S = 86_400;
  *  - auth_date is older than 24 hours
  *  - the `user` field is missing or unparseable
  */
-export default function verifyTelegramInitData(req, res, next) {
+export default async function verifyTelegramInitData(req, res, next) {
   const BOT_TOKEN = process.env.BOT_TOKEN;
   // ── 0. Ensure the server has a bot token ───────────────────
   if (!BOT_TOKEN) {
@@ -104,6 +104,13 @@ export default function verifyTelegramInitData(req, res, next) {
     const dbUser = getUser(user.id);
     if (dbUser && dbUser.banned === 1) {
       return res.status(403).json({ error: 'User is banned' });
+    }
+
+    // Check maintenance mode (unless the user is super admin)
+    const { getFeatureFlags } = await import('./settings.js');
+    const { isSuperAdmin } = await import('./middleware/adminAuth.js');
+    if (getFeatureFlags().maintenance_mode === true && !isSuperAdmin(user.id)) {
+      return res.status(503).json({ error: 'Orael is currently undergoing scheduled maintenance. Please check back later!' });
     }
 
     // ── 11. Attach to request and continue ─────────────────────

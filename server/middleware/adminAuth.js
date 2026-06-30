@@ -31,7 +31,7 @@ function getAdminIds() {
  */
 export function isSuperAdmin(telegramId) {
   const adminIds = getAdminIds();
-  return adminIds.includes(telegramId);
+  return adminIds.includes(Number(telegramId));
 }
 
 /**

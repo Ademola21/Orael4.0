@@ -44,6 +44,19 @@ export async function api(path, options = {}) {
       body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
     });
 
+    // ── Maintenance mode (503) — show custom maintenance gate ──
+    if (res.status === 503) {
+      const maintGate = document.getElementById('maintenance-gate');
+      const appEl = document.querySelector('.app');
+      const tgGate = document.getElementById('tg-gate');
+      const banGate = document.getElementById('ban-gate');
+      if (maintGate) maintGate.style.display = 'flex';
+      if (appEl) appEl.style.display = 'none';
+      if (tgGate) tgGate.style.display = 'none';
+      if (banGate) banGate.style.display = 'none';
+      throw new Error('maintenance');
+    }
+
     if (res.status === 403) {
       const errBody = await res.clone().json().catch(() => ({}));
       if (errBody && errBody.error === 'User is banned') {
@@ -66,7 +79,7 @@ export async function api(path, options = {}) {
 
     return await res.json();
   } catch (err) {
-    if (err.message !== 'Telegram-only access') {
+    if (err.message !== 'Telegram-only access' && err.message !== 'maintenance') {
       toast(err.message || 'Network error');
     }
     throw err;

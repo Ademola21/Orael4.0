@@ -769,19 +769,25 @@ console.error = function(...args) {
   </div>
 </div>
 
-<!-- ===================== MAINTENANCE GATE ===================== -->
-<div class="tg-gate maintenance-gate" id="maintenance-gate" style="display: none;">
-  <div class="gate-inner">
-    <div class="tg-logo-wrap">
-      <div class="tg-logo-ring-2"></div>
-      <div class="tg-logo-ring"></div>
-      <div class="tg-logo-bg"></div>
-      <svg class="tg-logo" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.3C.5 6.7.9 9.8 2.9 11.8c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.4-2.4c.4-.4.4-1.1 0-1.4z"/>
+<!-- ===================== MAINTENANCE GATE — Custom Orael Design ===================== -->
+<div class="maintenance-overlay" id="maintenance-gate" style="display: none;">
+  <div class="maintenance-inner">
+    <div class="maintenance-logo-wrap">
+      <div class="maintenance-ring-outer"></div>
+      <div class="maintenance-ring-inner"></div>
+      <div class="maintenance-glow"></div>
+      <svg class="maintenance-gear" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
       </svg>
     </div>
-    <h2>Developer is working</h2>
-    <p>Orael is currently undergoing scheduled maintenance. Please check back later.</p>
+    <h2 class="maintenance-title">Under Maintenance</h2>
+    <p class="maintenance-subtitle">ORL FOR THE PEOPLE</p>
+    <p class="maintenance-body">We're upgrading the engine room to serve you better. Orael will be back shortly — your ORL balance and mining progress are safe.</p>
+    <div class="maintenance-loader">
+      <div class="maintenance-loader-bar"></div>
+    </div>
+    <p class="maintenance-footer">Powered by Orael · ORL for the People</p>
   </div>
 </div>
 

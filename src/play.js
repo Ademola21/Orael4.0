@@ -26,9 +26,12 @@ let wheelRot = 0;
 let spinning = false;
 
 /**
- * Build the wheel SVG with sapphire+gold segments. Prize values come from the
- * server economy config so the displayed wheel always matches what the server
- * will actually pay. Called on boot AND whenever the economy config changes.
+ * Build the inline wheel SVG — matches the app's design language.
+ * Uses the SAME sapphire card colors (--bg-2 / --bg-3) as the rest of
+ * the app, with gold accents (--gold-1/2/3) for the rim, dividers, and
+ * jackpot labels. Alternating dark/light sapphire segments keep it
+ * readable without looking like a casino wheel. Clean, flat, premium.
+ * Called on boot.
  */
 export function buildWheel() {
   const svg = $('wheel');
@@ -39,19 +42,23 @@ export function buildWheel() {
   const seg = 360 / n;
   const cx = 100, cy = 100, r = 92;
 
-  // Segment colors — match the app's card palette
-  const segDark = '#141a2a';
-  const segLight = '#1e2538';
+  // Segment colors — match the app's card palette exactly
+  // --bg-2: #161c2c (card), --bg-3: #1e2538 (card hover)
+  // Alternating for subtle contrast, NOT multi-color
+  const segDark = '#141a2a';   // matches --bg-1 (darker card)
+  const segLight = '#1e2538';  // matches --bg-3 (lighter card)
 
   let html = '';
 
-  // Defs: gold rim gradient + segment highlight
+  // ── Defs ───────────────────────────────────────────────────────
   html += `<defs>
+    <!-- Gold rim gradient — matches .btn-primary gradient -->
     <linearGradient id="wheelRim" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#fbbf24"/>
       <stop offset="0.5" stop-color="#f59e0b"/>
       <stop offset="1" stop-color="#d97706"/>
     </linearGradient>
+    <!-- Subtle top highlight for segments (matches card inset shadow) -->
     <radialGradient id="segHighlight" cx="0.5" cy="0.25" r="0.6">
       <stop offset="0" stop-color="rgba(255,255,255,0.06)"/>
       <stop offset="0.6" stop-color="rgba(255,255,255,0)"/>
@@ -59,21 +66,29 @@ export function buildWheel() {
     </radialGradient>
   </defs>`;
 
-  // Gold rim (matches .btn-primary gradient)
+  // ── Gold rim (matches .btn-primary style) ──────────────────────
   html += `<circle cx="${cx}" cy="${cy}" r="${r + 5}" fill="none" stroke="url(#wheelRim)" stroke-width="5"/>`;
+  // Subtle dark inner edge for depth
   html += `<circle cx="${cx}" cy="${cy}" r="${r + 2}" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1"/>`;
 
+  // ── Segments ───────────────────────────────────────────────────
   for (let i = 0; i < n; i++) {
     const a0 = (i * seg - 90) * Math.PI / 180;
     const a1 = ((i + 1) * seg - 90) * Math.PI / 180;
     const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
     const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
 
+    // Alternating sapphire shades — matches the app's card palette
     const fill = i % 2 === 0 ? segLight : segDark;
     html += `<path d="M${cx},${cy} L${x0},${y0} A${r},${r} 0 0 1 ${x1},${y1} Z" fill="${fill}"/>`;
+
+    // Subtle highlight overlay (matches card inset shadow)
     html += `<path d="M${cx},${cy} L${x0},${y0} A${r},${r} 0 0 1 ${x1},${y1} Z" fill="url(#segHighlight)" pointer-events="none"/>`;
+
+    // Divider line — gold, subtle (matches --line-strong opacity)
     html += `<line x1="${cx}" y1="${cy}" x2="${x0}" y2="${y0}" stroke="rgba(251,191,36,0.18)" stroke-width="0.6"/>`;
 
+    // Label
     const am = (a0 + a1) / 2;
     const tx = cx + r * 0.62 * Math.cos(am);
     const ty = cy + r * 0.62 * Math.sin(am);
@@ -82,39 +97,38 @@ export function buildWheel() {
     const big = prize >= 300;
     const label = prize === 0 ? 'MISS' : prize;
 
+    // Text — matches app typography: gold for jackpots, soft gold for regular, muted for MISS
     let labelColor, fontSize, fontWeight;
-    if (prize === 0) { labelColor = '#64748b'; fontSize = 11; fontWeight = 600; }
-    else if (big) { labelColor = '#fbbf24'; fontSize = 15; fontWeight = 800; }
-    else { labelColor = '#fde68a'; fontSize = 13; fontWeight = 700; }
+    if (prize === 0) {
+      labelColor = '#64748b'; fontSize = 11; fontWeight = 600;  // --ink-faint
+    } else if (big) {
+      labelColor = '#fbbf24'; fontSize = 15; fontWeight = 800;  // --gold-1
+    } else {
+      labelColor = '#fde68a'; fontSize = 13; fontWeight = 700;  // soft gold
+    }
 
     html += `<text x="${tx}" y="${ty}" fill="${labelColor}" font-size="${fontSize}" font-family="Space Grotesk" font-weight="${fontWeight}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rot} ${tx} ${ty})" style="letter-spacing:0.03em">${label}</text>`;
   }
 
-  // Inner ring
+  // ── Inner ring (dark recess, matches card inset) ───────────────
   html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>`;
   html += `<circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>`;
 
   svg.innerHTML = html;
 
-  // Gold stud bezel ring
+  // Build the gold stud bezel ring (16 dots) — matches app's gold accent
   const bezel = document.querySelector('.wheel-bezel');
-  if (bezel && bezel.childElementCount === 0) {
+  if (bezel && bezel.innerHTML === '') {
     let dots = '';
     const dotN = 16;
     for (let i = 0; i < dotN; i++) {
       const ang = (i / dotN) * 360;
-      dots += `<i style="transform: rotate(${ang}deg) translate(0, -118px)"></i>`;
+      dots += `<i style="transform: rotate(${ang}deg) translate(0, -133px)"></i>`;
     }
     bezel.innerHTML = dots;
   }
 }
 
-/**
- * Animate the wheel to land on the server-provided prize index.
- * The pointer is fixed at the top (12 o'clock). Segment i's center starts at
- * angle (i*seg + seg/2 - 90). To bring it to the top (-90) we rotate the wheel
- * by R where R ≡ -(i*seg + seg/2) (mod 360). We add 6 full turns for drama.
- */
 function animateWheel(prizeIndex, prizeAmount) {
   if (spinning) return;
   spinning = true;
@@ -128,13 +142,20 @@ function animateWheel(prizeIndex, prizeAmount) {
   const endRot = wheelRot + 360 * 6 + delta;
   wheelRot = endRot;
 
+  // Spin the INLINE wheel (no more fullscreen modal)
   const wheelEl = $('wheel');
+
   if (wheelEl) {
     // Manual requestAnimationFrame animation — the most reliable approach.
-    // CSS transitions on SVG elements are unreliable — setting transition
-    // + transform in the same frame causes the browser to skip the animation.
     // By directly setting style.transform on every frame via rAF, nothing
     // can cancel or override the animation.
+    //
+    // Custom easing function keeps the wheel visibly rotating across the
+    // FULL 4.6s duration:
+    //   0-25% of time → 45% of rotation  (fast start)
+    //  25-50% of time → 25% of rotation  (medium)
+    //  50-75% of time → 15% of rotation  (slowing)
+    // 75-100% of time → 15% of rotation  (gentle stop)
     const duration = 4600;
     const startTime = performance.now();
 
@@ -163,6 +184,14 @@ function animateWheel(prizeIndex, prizeAmount) {
 
   setTimeout(() => {
     spinning = false;
+
+    // Restore spin button
+    const spinBtnEl = $('spinBtn');
+    if (spinBtnEl) {
+      spinBtnEl.disabled = false;
+      spinBtnEl.textContent = 'Spin the wheel';
+    }
+
     if (prizeAmount > 0) {
       reward(prizeAmount, 'Lucky spin!', 'Watch an ad to spin again!');
       if (prizeAmount >= 300) launchConfetti(60);
@@ -175,10 +204,10 @@ function animateWheel(prizeIndex, prizeAmount) {
 
 /* ========================================================================
    SCRATCH CARD (canvas-based real scratch-off)
-   ======================================================================== */
+   ========================================================================= */
 let scratchReady = false;
 let scratchRevealed = false;
-let scratchUnlocked = false;  // gate: canvas only interactive after "Get a scratch card"
+let scratchUnlocked = false;  // ← gate: canvas only interactive after "Get a scratch card"
 
 function initScratchCanvas() {
   const canvas = $('scratchCanvas');
@@ -187,6 +216,7 @@ function initScratchCanvas() {
 
   // Size canvas to its display box (device pixels for crispness)
   const rect = wrap.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return; // avoid canvas scale errors when hidden
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
   canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -245,7 +275,7 @@ function initScratchCanvas() {
   };
 
   const start = (e) => {
-    if (scratchRevealed || !scratchUnlocked) return;  // gated
+    if (scratchRevealed || !scratchUnlocked) return;  // ← gated
     drawing = true;
     last = pos(e);
     e.preventDefault();
@@ -297,14 +327,15 @@ function loadScratchCard(prize) {
   const prizeEl = $('scratchPrize');
   if (!wrap) return;
   scratchRevealed = false;
-  scratchUnlocked = true;  // unlock the canvas for scratching
-  wrap.classList.remove('revealed');
+  scratchUnlocked = true;  // ← unlock the canvas for scratching
+  wrap.classList.remove('revealed', 'locked');
   getState()._pendingScratchPrize = prize;
   if (prizeEl) {
     prizeEl.innerHTML = prize > 0
       ? `+${prize}<small>ORL</small>`
       : `MISS<small>try again</small>`;
   }
+  // Re-paint the foil fresh for this card
   initScratchCanvas();
 }
 
@@ -317,40 +348,72 @@ let cfRot = 0;
 function flipCoin(result /* 'heads' | 'tails' */) {
   const coin = $('coinflipCoin');
   if (!coin) return;
+  // Land with front (heads) facing up → rotateY multiple of 360.
+  // Land with back (tails) facing up → rotateY = 180 mod 360.
   const targetFace = result === 'tails' ? 180 : 0;
   const base = cfRot % 360;
   const delta = (targetFace - base + 360) % 360;
   const startRot = cfRot;
-  const endRot = cfRot + 360 * 10 + delta;
+  const endRot = cfRot + 360 * 10 + delta;  // 10 full spins for drama
   cfRot = endRot;
 
-  // Dramatic 3-second coin toss via requestAnimationFrame
+  // ── Dramatic 3-second coin toss ──────────────────────────────────
+  // The coin shoots up, spins rapidly in the air, then falls back down
+  // and lands with a small bounce. Uses requestAnimationFrame for
+  // reliable full-duration animation (same approach as the spin wheel).
+  //
+  // Three motion components combined each frame:
+  //   1. rotateY — the spinning (eased: fast start, slow finish)
+  //   2. translateY — the arc (up then back down, peaking at 50%)
+  //   3. scale — grows slightly at apex (perspective illusion)
+  //
+  // Timeline (3.0s total):
+  //   0-100% → continuous spin (eased)
+  //   0-50%  → coin rises from 0 to -120px (apex)
+  //   50-100% → coin falls back to 0
+  //   95-100% → small landing wobble (translateY bounce)
   const duration = 3000;
   const startTime = performance.now();
-  const apexHeight = 120;
+  const apexHeight = 120;  // pixels the coin rises at its peak
 
+  // Spin easing: keeps the coin visibly rotating across the full 3s
   function spinEase(t) {
-    if (t < 0.25) return (t / 0.25) * 0.45;
+    if (t < 0.25) return (t / 0.25) * 0.45;           // fast start
     if (t < 0.50) return 0.45 + ((t - 0.25) / 0.25) * 0.25;
     if (t < 0.75) return 0.70 + ((t - 0.50) / 0.25) * 0.15;
-    return 0.85 + ((t - 0.75) / 0.25) * 0.15;
+    return 0.85 + ((t - 0.75) / 0.25) * 0.15;          // gentle landing
   }
-  function arcHeight(t) { return -apexHeight * Math.sin(t * Math.PI); }
-  function scaleFactor(t) { return 1 + 0.25 * Math.sin(t * Math.PI); }
+
+  // Vertical arc: sine curve for a smooth up-and-down trajectory
+  // Returns a value from 0 → -apexHeight → 0 over t=0 → 0.5 → 1
+  function arcHeight(t) {
+    // Sin curve peaks at t=0.5, returns 0 at t=0 and t=1
+    return -apexHeight * Math.sin(t * Math.PI);
+  }
+
+  // Scale: coin appears larger at apex (closer to viewer), normal at start/end
+  function scaleFactor(t) {
+    return 1 + 0.25 * Math.sin(t * Math.PI);  // 1.0 → 1.25 → 1.0
+  }
+
+  // Landing wobble: small bounce in the last 5% of the animation
   function wobble(t) {
     if (t < 0.95) return 0;
-    const wt = (t - 0.95) / 0.05;
-    return -8 * Math.sin(wt * Math.PI);
+    const wt = (t - 0.95) / 0.05;  // 0 → 1 over last 5%
+    return -8 * Math.sin(wt * Math.PI);  // small downward bounce
   }
 
   function frame(now) {
     const elapsed = now - startTime;
     const t = Math.min(elapsed / duration, 1);
+
     const spinProgress = spinEase(t);
     const currentRot = startRot + (endRot - startRot) * spinProgress;
     const ty = arcHeight(t) + wobble(t);
     const sc = scaleFactor(t);
+
     coin.style.transform = `translateY(${ty}px) scale(${sc}) rotateY(${currentRot}deg)`;
+
     if (t < 1 && cfBusy) {
       requestAnimationFrame(frame);
     } else {
@@ -378,21 +441,42 @@ export function setupPlay() {
   }
   refreshEconomyCopy();
 
-  /* ---- Spin ---- */
+  /* ---- Spin (inline wheel — no fullscreen modal) ---- */
   const spinBtn = $('spinBtn');
-  if (spinBtn) {
-    spinBtn.addEventListener('click', () => {
-      if (spinning) return;
-      const doSpin = async () => {
-        try {
-          const res = await api('/api/play/spin', { method: 'POST' });
-          updateState(res);
-          buildWheel(); // ensure wheel matches server prizes
-          animateWheel(res.prizeIndex ?? 0, res.prizeAmount ?? 0);
-        } catch (e) { /* handled */ }
-      };
-      playAd('Loading spin…', 'Watch an ad to spin the wheel.', 10, doSpin);
-    });
+  const wheelHub = document.querySelector('.wheel-hub');
+
+  const triggerSpin = () => {
+    if (spinning) return;
+    // Show immediate visual feedback on the button so the user knows
+    // the spin is coming (the API call takes ~200ms)
+    if (spinBtn) {
+      spinBtn.disabled = true;
+      spinBtn.textContent = 'Spinning…';
+    }
+    const doSpin = async () => {
+      try {
+        const res = await api('/api/play/spin', { method: 'POST' });
+        updateState(res);
+        // buildWheel() is NOT called here — it was already called on boot,
+        // and calling it again right before animateWheel() causes a race
+        // condition where the browser skips the animation.
+        animateWheel(res.prizeIndex ?? 0, res.prizeAmount ?? 0);
+      } catch (e) {
+        // Restore button on error
+        if (spinBtn) {
+          spinBtn.disabled = false;
+          spinBtn.textContent = 'Spin the wheel';
+        }
+      }
+    };
+    playAd('Loading spin…', 'Watch an ad to spin the wheel.', 10, doSpin);
+  };
+
+  if (spinBtn) spinBtn.addEventListener('click', triggerSpin);
+  // Also allow clicking the wheel hub (center "SPIN" button) to trigger
+  if (wheelHub) {
+    wheelHub.style.cursor = 'pointer';
+    wheelHub.addEventListener('click', triggerSpin);
   }
 
   /* ---- Scratch card ---- */
@@ -411,7 +495,12 @@ export function setupPlay() {
   // Init the canvas once mounted AND whenever the Play screen is shown (the
   // wrapper has 0 size while the screen is hidden, so a boot-time init produces
   // a 1x1 canvas — re-init on navigation gives it real dimensions).
-  setTimeout(initScratchCanvas, 50);
+  // The canvas starts LOCKED — user must click "Get a scratch card" to unlock.
+  setTimeout(() => {
+    const wrap = $('scratch');
+    if (wrap) wrap.classList.add('locked');
+    initScratchCanvas();
+  }, 50);
   const playNav = document.querySelector('.nav-btn[data-screen="play"]');
   if (playNav) playNav.addEventListener('click', () => setTimeout(initScratchCanvas, 120));
 
@@ -550,4 +639,8 @@ export function renderLeaderboard(data) {
     <div class="lb-name">You<small>climb to reach the prize pool</small></div><div class="lb-amt">${fmtInt(S.balance)} ORL</div></div>`;
 
   el.innerHTML = rows;
+}
+
+export function isGameActive() {
+  return spinning || cfBusy;
 }

@@ -25,6 +25,7 @@ const SOCIAL_ICONS = {
   globe: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
 };
 
+/* Detect platform from URL and return the appropriate icon */
 function getTaskIcon(url) {
   if (!url) return icoPlay;
   const u = url.toLowerCase();
@@ -224,7 +225,7 @@ function renderAdsgramTasks() {
     return;
   }
 
-  const isDebug = import.meta.env.DEV ? 'true' : 'false';
+  const isDebug = 'false';
 
   const taskEl = document.createElement('adsgram-task');
   taskEl.setAttribute('data-block-id', blockId);

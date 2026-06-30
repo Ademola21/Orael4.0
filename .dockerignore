@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────
+#  .dockerignore — keep the Docker build context small + fast
+#  Anything listed here is NOT sent to the Docker daemon on `docker build`,
+#  so the build is faster and the image has no junk.
+# ─────────────────────────────────────────────────────────────
+
+# Dependencies (re-installed cleanly inside the container)
+node_modules
+bun.lock
+package-lock.json
+
+# Build output (rebuilt inside the container)
+dist
+.next
+.cache
+
+# Data + secrets (mounted as volumes in prod, never baked into the image)
+data
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+
+# Version control
+.git
+.gitignore
+
+# Dev tooling
+.vscode
+.idea
+*.log
+dev.log
+npm-debug.log*
+.DS_Store
+
+# Documentation (not needed at runtime)
+README.md
+AUDIT.md
+ECONOMY_CALCULATIONS.md
+FINANCIAL_MODEL.md
+*.md
+
+# Docker files (not needed inside the image)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Sandbox / dev-only
+.zscripts
+tool-results
+skills
+download
+upload
+mini-services
+examples
+worklog.md
+prisma
+db

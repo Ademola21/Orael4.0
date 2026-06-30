@@ -1,0 +1,159 @@
+# ─────────────────────────────────────────────────────────────
+#  Orael — PRODUCTION Docker Compose (1M-user scale)
+#
+#  This compose file sets up a full production stack:
+#    - PostgreSQL 16 (replaces SQLite for horizontal scaling)
+#    - Redis 7 (rate limiting + session cache across replicas)
+#    - Orael app (2+ replicas behind the load balancer)
+#    - Orael bot (1 instance — Telegram only allows 1 long-poller)
+#    - Caddy (auto-HTTPS reverse proxy / load balancer)
+#
+#  Usage:
+#    1. Copy .env.example to .env and fill in real secrets
+#    2. docker compose -f docker-compose.prod.yml up -d
+#
+#  NOTE: The app currently uses SQLite (better-sqlite3) which is fast and
+#  works great up to ~100k users on a single instance. For 1M+ users, you
+#  need PostgreSQL — set DATABASE_URL to point at the `db` service below
+#  and run the Prisma migration. See SCALING.md for the migration path.
+# ─────────────────────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL (for 1M+ users — replaces SQLite) ──
+  db:
+    image: postgres:16-alpine
+    container_name: orael-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: orael
+      POSTGRES_USER: orael
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_prod}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orael -d orael"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Don't expose the DB port externally in production
+    # expose:
+    #   - "5432"
+
+  # ── Redis (rate limiting + cache across replicas) ──
+  redis:
+    image: redis:7-alpine
+    container_name: orael-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ── Orael app (scale this with `--scale orael=N`) ──
+  # Only ONE replica should have CRON_LEADER=true (for backups, leaderboard, etc.)
+  orael:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://orael:${POSTGRES_PASSWORD:-change_me_in_prod}@db:5432/orael
+      - REDIS_URL=redis://redis:6379
+      - CRON_LEADER=${CRON_LEADER:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - orael-uploads:/app/data/uploads
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ── Orael Telegram bot (1 instance only — Telegram allows 1 long-poller) ──
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://orael:${POSTGRES_PASSWORD:-change_me_in_prod}@db:5432/orael
+      - REDIS_URL=redis://redis:6379
+      - CRON_LEADER=false
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["node", "server/bot.js"]
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ── Caddy (auto-HTTPS reverse proxy + load balancer) ──
+  # Automatically provisions Let's Encrypt certs for your domain.
+  caddy:
+    image: caddy:2-alpine
+    container_name: orael-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - orael
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+volumes:
+  postgres-data:
+  redis-data:
+  orael-uploads:
+  caddy-data:
+  caddy-config:

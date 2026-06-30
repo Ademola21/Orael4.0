@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: orael-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - orael-data:/app/data
+      - orael-uploads:/app/public/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - redis
+    networks:
+      - orael-net
+    # Auto-restart on crash, max 10 retries
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: orael-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - orael-net
+
+  # Auto-backup service — runs backup.sh every 6 hours
+  backup:
+    image: alpine:latest
+    container_name: orael-backup
+    restart: unless-stopped
+    volumes:
+      - orael-data:/app/data:ro
+      - orael-backups:/backups
+      - ./backup.sh:/backup.sh:ro
+    entrypoint: |
+      sh -c "
+        apk add --no-cache sqlite
+        while true; do
+          sh /backup.sh
+          sleep 21600
+        done
+      "
+    networks:
+      - orael-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: orael-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+    networks:
+      - orael-net
+
+volumes:
+  orael-data:
+  orael-uploads:
+  orael-backups:
+  redis-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  orael-net:
+    driver: bridge

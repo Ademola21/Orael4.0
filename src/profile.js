@@ -2,8 +2,8 @@
    profile.js — Profile overlay logic
    - Renders + handles the avatar picker (10 defaults) and device upload
      (client-side canvas resize to 256px before upload)
-   - Wires the Pro subscription button (Telegram Stars invoice, or dev-activate
-     in DEV_MODE) and the Pro free daily chest
+   - Wires the Pro subscription button (Telegram Stars invoice
+     ) and the Pro free daily chest
    ======================================================================== */
 
 import { api } from './api.js';
@@ -111,9 +111,6 @@ async function uploadAvatar(file) {
     // explicit no-transform flag via headers.
     const initData = window.Telegram?.WebApp?.initData || '';
     const headers = { 'X-Telegram-Init-Data': initData };
-    if (window.__ORAEL_DEV__) {
-      headers['X-Dev-Telegram-Id'] = String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '');
-    }
     const res = await fetch('/api/profile/avatar/upload', { method: 'POST', headers, body: form });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Upload failed' }));
@@ -170,16 +167,6 @@ async function handleProClick() {
   } catch (e) { /* api() toasted */ }
 }
 
-async function handleProDevClick() {
-  haptic('light');
-  try {
-    const res = await api('/api/wallet/pro/dev-activate', { method: 'POST' });
-    if (res.state) updateState(res.state);
-    render();
-    toast({ title: 'Pro activated', message: 'DEV MODE · 30 days', variant: 'success' });
-  } catch (e) { /* api() toasted */ }
-}
-
 async function handleProChest() {
   haptic('light');
   try {
@@ -212,12 +199,6 @@ export function setupProfile() {
 
   const proBtn = $('proBtn');
   if (proBtn) proBtn.addEventListener('click', handleProClick);
-
-  const proDevBtn = $('proDevBtn');
-  if (proDevBtn && window.__ORAEL_DEV__) {
-    proDevBtn.style.display = '';
-    proDevBtn.addEventListener('click', handleProDevClick);
-  }
 
   const proChestBtn = $('proChestBtn');
   if (proChestBtn) proChestBtn.addEventListener('click', handleProChest);

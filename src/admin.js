@@ -3,7 +3,7 @@
    - 9 tabs: Dashboard, Users, Withdrawals, Transactions, Economy, Promos,
              Audit, Broadcast, Settings
    - Full-screen overlay (#adminVeil) wired to the topbar #adminChip
-   - Uses api() (handles Telegram initData + DEV_MODE), toast(), haptic(),
+   - Uses api() (handles Telegram initData), toast(), haptic(),
      getState() for admin role/permission checks
    - Vanilla JS DOM. Each tab has a load function that renders into #adminBody
      and attaches its own event listeners.
@@ -124,7 +124,7 @@ const tabState = {
   dashboard: { loaded: false },
   users: { page: 1, limit: 20, search: '' },
   withdrawals: { status: 'needs_approval', page: 1, limit: 20, selected: new Set() },
-  transactions: { page: 1, limit: 50, search: '' },
+  transactions: { page: 1, limit: 50 },
   economy: { data: null },
   promos: { loaded: false },
   audit: { page: 1, limit: 30, action: '' },
@@ -859,17 +859,12 @@ async function loadTransactions(page) {
         </div>
       </div>
 
-      <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;">
-        <input type="text" id="adminTxSearch" placeholder="Search by Transaction ID, type, or description..." value="${esc(tabState.transactions.search || '')}" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg-inset);color:var(--ink);font-size:12.5px;outline:none;" />
-        <button class="btn btn-primary" id="adminTxSearchBtn" style="padding:8px 14px;font-size:12px;border-radius:8px;">Search</button>
-      </div>
-
       ${transactions.length === 0 ? emptyState('No transactions') : `
         <div class="admin-table-wrap">
           <div class="admin-table-scroll">
             <table class="admin-table">
               <thead>
-                <tr><th>ID</th><th>User</th><th>Type</th><th>Amount</th><th>Status / Ref</th><th>Description</th><th>Date</th></tr>
+                <tr><th>ID</th><th>User</th><th>Type</th><th>Amount</th><th>Description</th><th>Date</th></tr>
               </thead>
               <tbody>
                 ${transactions.map(t => `
@@ -878,7 +873,6 @@ async function loadTransactions(page) {
                     <td><b>${esc(t.user_first_name || t.user_name || 'User #' + t.user_id)}</b><br/><span class="muted mono">${esc(t.user_username ? '@' + t.user_username : '')}</span></td>
                     <td>${txTypePill(t.type)}</td>
                     <td class="num ${txAmountClass(t.amount, t.type)}">${t.amount >= 0 ? '+' : ''}${fmtNum(t.amount, 2)}</td>
-                    <td>${t.withdrawal_status ? `<span class="tx-status-badge ${t.withdrawal_status === 'completed' ? 'completed' : t.withdrawal_status === 'failed' || t.withdrawal_status === 'rejected' ? 'failed' : 'pending'}">${esc(t.withdrawal_status)}</span>${t.flw_reference ? `<br/><span class="muted mono" style="font-size:10px">${esc(t.flw_reference)}</span>` : ''}` : '<span class="muted">—</span>'}</td>
                     <td class="muted">${esc(t.description || '—')}</td>
                     <td class="muted">${fmtDate(t.created_at)}</td>
                   </tr>
@@ -894,49 +888,6 @@ async function loadTransactions(page) {
 
   $('adminBody').innerHTML = html.replace(/__PAGE__/g, '');
   wirePagination($('adminBody'), (p) => loadTransactions(p));
-
-  // Wire search
-  const searchInput = $('adminTxSearch');
-  const searchBtn = $('adminTxSearchBtn');
-  const doSearch = () => {
-    const q = searchInput.value.trim();
-    tabState.transactions.search = q;
-    tabState.transactions.page = 1;
-    loadTransactions();
-  };
-  if (searchBtn) searchBtn.addEventListener('click', doSearch);
-  if (searchInput) {
-    searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') doSearch();
-    });
-  }
-
-  // Apply client-side search filter if a search term is set
-  if (tabState.transactions.search) {
-    const q = tabState.transactions.search.toLowerCase();
-    const filtered = transactions.filter(t =>
-      String(t.id).includes(q) ||
-      (t.type || '').toLowerCase().includes(q) ||
-      (t.description || '').toLowerCase().includes(q) ||
-      (t.flw_reference || '').toLowerCase().includes(q) ||
-      (t.withdrawal_id || '').toLowerCase().includes(q)
-    );
-    // Re-render the table body with filtered results
-    const tbody = $('adminBody').querySelector('.admin-table tbody');
-    if (tbody) {
-      tbody.innerHTML = filtered.map(t => `
-        <tr>
-          <td class="num">${t.id}</td>
-          <td><b>${esc(t.user_first_name || t.user_name || 'User #' + t.user_id)}</b><br/><span class="muted mono">${esc(t.user_username ? '@' + t.user_username : '')}</span></td>
-          <td>${txTypePill(t.type)}</td>
-          <td class="num ${txAmountClass(t.amount, t.type)}">${t.amount >= 0 ? '+' : ''}${fmtNum(t.amount, 2)}</td>
-          <td>${t.withdrawal_status ? `<span class="tx-status-badge ${t.withdrawal_status === 'completed' ? 'completed' : t.withdrawal_status === 'failed' || t.withdrawal_status === 'rejected' ? 'failed' : 'pending'}">${esc(t.withdrawal_status)}</span>${t.flw_reference ? `<br/><span class="muted mono" style="font-size:10px">${esc(t.flw_reference)}</span>` : ''}` : '<span class="muted">—</span>'}</td>
-          <td class="muted">${esc(t.description || '—')}</td>
-          <td class="muted">${fmtDate(t.created_at)}</td>
-        </tr>
-      `).join('');
-    }
-  }
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -12,7 +12,7 @@
 //  All events are logged to console + audit_log table in DB
 // ─────────────────────────────────────────────────────────────
 
-import { addAuditLog } from '../db.js';
+import { logAudit } from '../db.js';
 
 /**
  * Log a suspicious activity event
@@ -31,12 +31,14 @@ export function logSuspicious(type, details = {}) {
 
   // Persist to audit_log table
   try {
-    addAuditLog({
-      admin_id: details.userId || 0,
-      admin_name: 'SYSTEM',
-      action: `SUSPICIOUS_${type}`,
-      target: JSON.stringify(details),
-    });
+    logAudit(
+      details.userId || 0,
+      'system',
+      `SUSPICIOUS_${type}`,
+      null,
+      details,
+      null
+    );
   } catch (e) {
     console.error('[MONITOR] Failed to persist audit log:', e);
   }

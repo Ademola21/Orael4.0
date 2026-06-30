@@ -3,7 +3,7 @@
 # Replace "yourdomain.com" with your actual domain
 # ─────────────────────────────────────────────────────
 
-yourdomain.com {
+orael.yorubacinemax.xyz {
     # Reverse proxy to the Express app
     reverse_proxy app:3000
 
@@ -37,9 +37,9 @@ yourdomain.com {
     encode gzip zstd
 
     # ── Rate limiting (Caddy layer) ──
-    # 100 requests per 10 seconds per IP
-    rate_limit {
-        zone dynamic 100r/10s
-        key {remote_host}
-    }
+    # Commented out to prevent boot failure on standard Caddy images
+    # rate_limit {
+    #     zone dynamic 100r/10s
+    #     key {remote_host}
+    # }
 }

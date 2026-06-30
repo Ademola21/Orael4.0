@@ -8,6 +8,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Install build tools for better-sqlite3 native compilation
+RUN apk add --no-cache python3 make g++ libc6-compat
+
 # Install ALL dependencies (including devDeps for vite build)
 COPY package*.json ./
 RUN npm ci
@@ -20,9 +23,12 @@ RUN npm run build
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
+# Install runtime libs + build tools for compiling better-sqlite3
+RUN apk add --no-cache libc6-compat curl tini python3 make g++
+
 # Install only production dependencies (no devDeps → smaller image)
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev && apk del python3 make g++ && npm cache clean --force
 
 # Copy built frontend from the builder stage (only dist/ — not src/)
 COPY --from=builder /app/dist ./dist

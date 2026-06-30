@@ -55,14 +55,8 @@ export async function accrueMinedORL(user) {
       [mined, mined, now, user.id]
     );
 
-    // SCALABILITY: Only log a transaction row when the mined amount is
-    // meaningful (> 0.001 ORL). At 1M users polling every 30s, logging every
-    // micro-accrual would insert ~33k rows/sec into the transactions table —
-    // billions of rows over time. Sub-threshold amounts are still credited to
-    // the balance (above) but don't get their own transaction log row.
-    if (mined >= 0.001) {
-      addTransaction(user.id, 'mining', mined, `Mined ${mined.toFixed(6)} ORL`);
-    }
+    // Do not log a transaction row for automatic continuous mining accruals
+    // as it spams the transaction history. The balance is credited atomically in the database.
 
     if (user.referred_by) {
       await payReferralCommission(user.id, mined);

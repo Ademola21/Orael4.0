@@ -4,6 +4,12 @@ import { $, render, toast, reward, fmtInt, fmt, naira } from './ui.js';
 import { haptic } from './telegram.js';
 import { launchConfetti } from './animations.js';
 
+/** Hash a sequential DB id into a random-looking 9-digit reference number */
+function txRef(id) {
+  let h = Math.imul(id, 2654435761) >>> 0;
+  return String((h % 900000000) + 100000000);
+}
+
 let historyPage = 1;
 let historyTotalPages = 1;
 
@@ -1010,7 +1016,7 @@ function showTransactionDetails(tx) {
   `;
 
   // Build detail fields — flat list, no separate "Withdrawal Tracking" section
-  const txIdFormatted = String(tx.id).padStart(8, '0');
+  const txIdFormatted = txRef(tx.id);
   let html = fieldWithCopy('Transaction ID', `#${txIdFormatted}`, txIdFormatted, 'id');
   html += field('Type', typeText);
   html += field('Amount', `<span style="color:${amountColor};font-family:var(--font-mono);">${amountSign}${fmtInt(tx.amount)} ORL</span>`);

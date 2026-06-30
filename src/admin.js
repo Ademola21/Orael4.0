@@ -14,6 +14,12 @@ import { toast } from './ui.js';
 import { haptic } from './telegram.js';
 import { getState } from './state.js';
 
+/** Hash a sequential DB id into a random-looking 9-digit reference number */
+function txRef(id) {
+  let h = Math.imul(id, 2654435761) >>> 0;
+  return String((h % 900000000) + 100000000);
+}
+
 /* ─── Helpers ─────────────────────────────────────────────────── */
 
 function esc(s) {
@@ -418,7 +424,7 @@ async function openUserDrawer(userId) {
   const ai = adminInfo();
   const canBan = ai.canAll || ai.perms.includes('ban_users');
   const canAdjust = ai.canAll || ai.perms.includes('adjust_balance');
-  const canRole = _isSuperAdmin;
+  const canRole = ai.canAll || ai.perms.includes('manage_mods');
 
   $('adminDrawerTitle').textContent = user.first_name || ('User #' + user.id);
 
@@ -463,14 +469,13 @@ async function openUserDrawer(userId) {
             <button class="btn btn-primary btn-sm" id="uBalBtn" style="margin-top:8px">Apply adjustment</button>
           </div>
         </div>` : ''}
-      ${canRole && !user.isSuperAdmin ? `
+      ${canRole && !user.isSuperAdmin && user.role !== 'admin' ? `
         <div class="admin-form-card">
           <div class="admin-field">
             <label>Role</label>
             <select class="admin-select" id="uRoleSel">
               <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
               <option value="mod" ${user.role === 'mod' ? 'selected' : ''}>Moderator</option>
-              <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
             </select>
           </div>
           <div class="admin-field">
@@ -479,6 +484,7 @@ async function openUserDrawer(userId) {
           </div>
           <button class="btn btn-primary btn-sm" id="uRoleBtn">Save role</button>
         </div>` : ''}
+      ${user.role === 'admin' && !user.isSuperAdmin ? '<div class="admin-banner" style="background:rgba(224,162,91,0.08);border:1px solid rgba(224,162,91,0.2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--gold-1);display:flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;flex-shrink:0"><path d="M12 15V9m-3 3h6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><div>Admin role can only be changed via server environment (.env).</div></div>' : ''}
       ${user.isSuperAdmin ? '<div class="admin-banner" style="background:rgba(224,162,91,0.08);border:1px solid rgba(224,162,91,0.2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--gold-1);display:flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;flex-shrink:0"><path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.5-6.3 4.5 2.3-7-6-4.6h7.6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><div>This is your account. Role and permissions are defined in server environment.</div></div>' : ''}
     </div>
 
@@ -869,7 +875,7 @@ async function loadTransactions(page) {
               <tbody>
                 ${transactions.map(t => `
                   <tr>
-                    <td class="num">#${String(t.id).padStart(8, '0')}</td>
+                    <td class="num">#${txRef(t.id)}</td>
                     <td><b>${esc(t.user_first_name || t.user_name || 'User #' + t.user_id)}</b><br/><span class="muted mono">${esc(t.user_username ? '@' + t.user_username : '')}</span></td>
                     <td>${txTypePill(t.type)}</td>
                     <td class="num ${txAmountClass(t.amount, t.type)}">${t.amount >= 0 ? '+' : ''}${fmtNum(t.amount, 2)}</td>

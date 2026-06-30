@@ -321,19 +321,28 @@ function positionSpotlight(step) {
     tooltip.classList.remove('center');
     const tooltipRect = tooltip.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    const spaceBelow = viewportHeight - rect.bottom;
+    const navHeight = 78; // --nav-h: bottom navigation bar
+    const usableHeight = viewportHeight - navHeight; // visible area above nav
+    const spaceBelow = usableHeight - rect.bottom;
     const spaceAbove = rect.top;
 
     let tooltipTop;
-    if (step.placement === 'top' || (spaceBelow < 220 && spaceAbove > 220)) {
+    if (step.placement === 'top' || (spaceBelow < tooltipRect.height + 32 && spaceAbove > tooltipRect.height + 32)) {
+      // Place above
       tooltipTop = rect.top - tooltipRect.height - 16;
       tooltip.classList.add('above');
       tooltip.classList.remove('below');
     } else {
+      // Place below
       tooltipTop = rect.bottom + 16;
       tooltip.classList.add('below');
       tooltip.classList.remove('above');
     }
+
+    // Clamp tooltip within visible area (don't let it go behind nav bar or off top)
+    const minTop = 16;
+    const maxTop = usableHeight - tooltipRect.height - 16;
+    tooltipTop = Math.max(minTop, Math.min(tooltipTop, maxTop));
 
     // Center horizontally, but clamp to viewport
     let tooltipLeft = rect.left + rect.width / 2 - tooltipRect.width / 2;

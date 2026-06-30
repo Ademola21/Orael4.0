@@ -446,18 +446,6 @@ console.error = function(...args) {
         <!-- Populated dynamically from server economy config -->
       </div>
 
-      <!-- Promo code redemption -->
-      <div style="height:16px"></div>
-      <div class="feat" style="padding:14px 16px">
-        <div class="fee-row" style="margin-bottom:8px">
-          <span style="font-weight:600;color:var(--cu-1)">Redeem Promo Code</span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <input type="text" id="promoInput" placeholder="ENTER PROMO CODE" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg-inset);color:var(--ink);font-size:13px;text-transform:uppercase" />
-          <button class="btn btn-primary" id="promoBtn" style="padding:0 16px;height:38px;font-size:13px;margin:0">Redeem</button>
-        </div>
-      </div>
-
       <div class="feat" id="walletInfoBox" style="padding:14px 16px;display:none">
         <div class="fee-row"><span id="walletInfoLabel">Wallet address / Account details</span></div>
         <input type="text" id="walletInfoInput" placeholder="Enter your wallet address or bank account" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg-inset);color:var(--ink);font-size:13px;margin-top:6px" />
@@ -644,6 +632,15 @@ console.error = function(...args) {
       </button>
       <button class="btn btn-ghost" id="proChestBtn" style="margin-top:8px;display:none">Claim free daily chest</button>
       <button class="btn btn-ghost" id="proDevBtn" style="margin-top:8px;display:none">Activate Pro (dev preview)</button>
+    </div>
+
+    <!-- Promo code redemption -->
+    <div class="profile-section">
+      <div class="profile-section-title">Redeem Promo Code</div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <input type="text" id="promoInput" placeholder="ENTER CODE" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--line-strong);background:var(--bg-inset);color:var(--ink);font-size:13px;text-transform:uppercase;outline:none;font-family:var(--font-mono);" />
+        <button class="btn btn-primary" id="promoBtn" style="padding:0 18px;height:42px;font-size:13px;margin:0;flex-shrink:0;">Redeem</button>
+      </div>
     </div>
 
     <button class="btn btn-ghost" id="profileViewTiers" style="width:100%;margin-top:12px">View tier progress</button>

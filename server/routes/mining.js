@@ -30,6 +30,11 @@ router.post('/refuel', async (req, res) => {
       return res.status(400).json({ error: 'Engine fuel level is already full' });
     }
 
+    // Log the total session mining transaction
+    if (user.tank_mined > 0) {
+      addTransaction(user.id, 'mining', user.tank_mined, `Mined ${user.tank_mined.toFixed(6)} ORL`);
+    }
+
     // Reset tank
     updateUser(user.id, {
       tank_mined: 0,

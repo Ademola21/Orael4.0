@@ -126,14 +126,14 @@ export const REFERRAL_L2_PCT = 0.02; // 2% second-level
 // ── Earn tasks (1 ad per task → 40 ORL = 23.8% payout ratio ✅) ──
 export const TASKS = [
   { id: 't1', title: 'Watch a sponsored video', sub: '15s · rewarded ad', reward: 40, url: '' },
-  { id: 't2', title: 'Visit partner offer',     sub: 'Open link · 10s',  reward: 35, url: '' },
   { id: 't3', title: 'Daily quiz',              sub: 'Answer 1 question', reward: 35, url: '' },
 ];
 
 export const FEATURED_TASKS = [
-  { id: 'f1', title: 'Join Orael Bot',          sub: 'Open & start the bot', reward: 40, url: 'https://t.me/Orael_bot' },
-  { id: 'f2', title: 'Follow Orael on X',        sub: 'Tap follow',           reward: 40, url: 'https://x.com/Orael_Network' },
-  { id: 'f3', title: 'Subscribe Orael channel',  sub: 'Telegram',             reward: 40, url: 'https://t.me/Orael_Channel' },
+  { id: 'f1', title: 'Join Telegram Channel',   sub: 'Telegram',             reward: 40, url: 'https://t.me/OraelNG' },
+  { id: 'f2', title: 'Follow Orael on X',        sub: 'X (Twitter)',          reward: 40, url: 'https://x.com/oraelng' },
+  { id: 'f3', title: 'Join Discord Server',     sub: 'Discord',              reward: 40, url: 'https://discord.gg/kABmytyfF' },
+  { id: 'f4', title: 'Follow Orael on TikTok',   sub: 'TikTok',               reward: 40, url: 'https://www.tiktok.com/@orael24?_r=1&_t=ZN-97dxKPAIseU' },
 ];
 
 // ── Tier Multipliers ────────────────────────────────────────

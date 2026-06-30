@@ -22,7 +22,8 @@ router.get('/', async (req, res) => {
       first_name: u.first_name || 'Anonymous',
       username: u.username || '',
       balance: u.balance,
-      photo_url: u.photo_url || null
+      photo_url: u.photo_url || null,
+      avatar_url: u.avatar_url || null
     }));
 
     const userRankVal = getUserRank(user.id);

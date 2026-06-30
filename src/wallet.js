@@ -1010,7 +1010,8 @@ function showTransactionDetails(tx) {
   `;
 
   // Build detail fields — flat list, no separate "Withdrawal Tracking" section
-  let html = fieldWithCopy('Transaction ID', `#${tx.id}`, tx.id, 'id');
+  const txIdFormatted = String(tx.id).padStart(8, '0');
+  let html = fieldWithCopy('Transaction ID', `#${txIdFormatted}`, txIdFormatted, 'id');
   html += field('Type', typeText);
   html += field('Amount', `<span style="color:${amountColor};font-family:var(--font-mono);">${amountSign}${fmtInt(tx.amount)} ORL</span>`);
   html += field('Date', new Date(tx.created_at).toLocaleString());

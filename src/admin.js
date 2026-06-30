@@ -479,7 +479,7 @@ async function openUserDrawer(userId) {
           </div>
           <button class="btn btn-primary btn-sm" id="uRoleBtn">Save role</button>
         </div>` : ''}
-      ${user.isSuperAdmin ? '<div class="admin-banner warn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><div><b>Super admin.</b> Cannot be modified.</div></div>' : ''}
+      ${user.isSuperAdmin ? '<div class="admin-banner" style="background:rgba(224,162,91,0.08);border:1px solid rgba(224,162,91,0.2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--gold-1);display:flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;flex-shrink:0"><path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.5-6.3 4.5 2.3-7-6-4.6h7.6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><div>This is your account. Role and permissions are defined in server environment.</div></div>' : ''}
     </div>
 
     ${referrer || (referrals && referrals.length) ? `
@@ -869,7 +869,7 @@ async function loadTransactions(page) {
               <tbody>
                 ${transactions.map(t => `
                   <tr>
-                    <td class="num">${t.id}</td>
+                    <td class="num">#${String(t.id).padStart(8, '0')}</td>
                     <td><b>${esc(t.user_first_name || t.user_name || 'User #' + t.user_id)}</b><br/><span class="muted mono">${esc(t.user_username ? '@' + t.user_username : '')}</span></td>
                     <td>${txTypePill(t.type)}</td>
                     <td class="num ${txAmountClass(t.amount, t.type)}">${t.amount >= 0 ? '+' : ''}${fmtNum(t.amount, 2)}</td>

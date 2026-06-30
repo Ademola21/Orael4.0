@@ -16,6 +16,81 @@ import { isSuperAdmin } from '../middleware/adminAuth.js';
 
 const router = Router();
 
+const QUIZ_POOL = [
+  {
+    id: "q1",
+    question: "What is the primary token of the Orael ecosystem?",
+    options: ["BTC", "ORL", "ETH", "USDT"],
+    answer: "ORL"
+  },
+  {
+    id: "q2",
+    question: "What is the peg value of 1 ORL in Nigerian Naira?",
+    options: ["₦0.01", "₦0.02", "₦0.05", "₦0.10"],
+    answer: "₦0.02"
+  },
+  {
+    id: "q3",
+    question: "How long is the mining session duration for Rig I?",
+    options: ["2 hours", "3 hours", "4 hours", "5 hours"],
+    answer: "4 hours"
+  },
+  {
+    id: "q4",
+    question: "Which of the following is NOT an Orael cash out method?",
+    options: ["Local Bank Transfer", "Airtime Payout", "USDT Transfer", "PayPal Cash"],
+    answer: "PayPal Cash"
+  },
+  {
+    id: "q5",
+    question: "What percentage commission does Level 1 referrer earn?",
+    options: ["5%", "7%", "10%", "12%"],
+    answer: "7%"
+  },
+  {
+    id: "q6",
+    question: "What percentage commission does Level 2 referrer earn?",
+    options: ["1%", "2%", "3%", "5%"],
+    answer: "2%"
+  },
+  {
+    id: "q7",
+    question: "Which mini-game EV (Expected Value) is 40 ORL per watch?",
+    options: ["Coin Flip", "Spin-the-wheel", "Mystery Chest", "Scratch Card"],
+    answer: "Coin Flip"
+  },
+  {
+    id: "q8",
+    question: "What is the maximum single withdrawal limit by default?",
+    options: ["50,000 ORL", "100,000 ORL", "200,000 ORL", "500,000 ORL"],
+    answer: "200,000 ORL"
+  },
+  {
+    id: "q9",
+    question: "What is the default withdrawal fee for regular users?",
+    options: ["2%", "5%", "8%", "10%"],
+    answer: "10%"
+  },
+  {
+    id: "q10",
+    question: "What is the default withdrawal fee for Orael Pro users?",
+    options: ["2%", "5%", "8%", "10%"],
+    answer: "5%"
+  },
+  {
+    id: "q11",
+    question: "Which of these is the official Telegram Channel for Orael?",
+    options: ["@OraelGlobal", "@OraelNG", "@OraelAnn", "@OraelChannel"],
+    answer: "@OraelNG"
+  },
+  {
+    id: "q12",
+    question: "How often can you claim the Orael faucet?",
+    options: ["Every 30 minutes", "Every 1 hour", "Every 6 hours", "Every 24 hours"],
+    answer: "Every 1 hour"
+  }
+];
+
 /* ─── helper ──────────────────────────────────────────────────────── */
 
 function todayStr() {
@@ -60,6 +135,72 @@ router.post('/faucet', async (req, res) => {
     return res.json({ user: await getUserState(telegramUser.id) });
   } catch (err) {
     console.error('POST /faucet error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/* ─── GET /quiz/question ──────────────────────────────────────────── */
+
+router.get('/quiz/question', async (req, res) => {
+  try {
+    const telegramUser = req.user;
+    const completed = await getCompletedTasks(telegramUser.id);
+    if (completed.includes('t3')) {
+      return res.status(400).json({ error: 'Daily quiz already completed today' });
+    }
+
+    const randomIndex = Math.floor(Math.random() * QUIZ_POOL.length);
+    const question = QUIZ_POOL[randomIndex];
+
+    return res.json({
+      questionId: question.id,
+      question: question.question,
+      options: question.options
+    });
+  } catch (err) {
+    console.error('GET /quiz/question error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/* ─── POST /quiz/submit ───────────────────────────────────────────── */
+
+router.post('/quiz/submit', async (req, res) => {
+  try {
+    const telegramUser = req.user;
+    const { questionId, answer } = req.body;
+    let user = await getUser(telegramUser.id);
+
+    const completed = await getCompletedTasks(user.id);
+    if (completed.includes('t3')) {
+      return res.status(400).json({ error: 'Daily quiz already completed today' });
+    }
+
+    const question = QUIZ_POOL.find(q => q.id === questionId);
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+
+    if (question.answer.toLowerCase().trim() !== answer.toLowerCase().trim()) {
+      return res.status(400).json({ error: 'Incorrect answer. Try again tomorrow!' });
+    }
+
+    const E = getEconomyConfig();
+    const task = E.TASKS.find(t => t.id === 't3');
+    const rewardAmt = task ? task.reward : 35;
+
+    user.balance += rewardAmt;
+    await completeTask(user.id, 't3');
+    await addTransaction(user.id, 'task', rewardAmt, 'Daily quiz completed');
+    await updateUser(user);
+
+    return res.json({
+      success: true,
+      reward: rewardAmt,
+      user: await getUserState(telegramUser.id)
+    });
+  } catch (err) {
+    console.error('POST /quiz/submit error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -14,6 +14,7 @@
    ======================================================================== */
 
 import { haptic } from './telegram.js';
+import { getState } from './state.js';
 
 /** SVG arc circumference for the main gauge */
 export const ARC_LEN = 395.8;
@@ -67,6 +68,14 @@ function getController() {
 export function playAd(_title, _body, _seconds, onReward) {
   if (adPlaying) {
     console.warn('An ad is already playing. Ignoring request.');
+    return;
+  }
+
+  // Admin bypass — admins skip ads entirely
+  const S = getState();
+  if (S.role === 'admin' || S.role === 'mod') {
+    haptic('success');
+    if (onReward) onReward();
     return;
   }
 

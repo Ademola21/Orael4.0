@@ -654,18 +654,22 @@ async function executeWithdrawalAPI(body) {
 
     if (res.success) {
       updateState(res.user || res);
-      
+
       const amtInput = $('withdrawAmountInput');
       if (amtInput) amtInput.value = '';
-      
+
       render();
 
+      // Show professional withdrawal confirmation with the actual amount
+      const S = getState();
+      const e = S.economy || {};
+      const methodLabel = S._selectedMethod?.name || 'your account';
       if (res.needsApproval) {
-        reward(null, 'Waiting for Approval', res.message || 'Your withdrawal is waiting for admin approval.');
+        reward(null, 'Withdrawal Submitted', `Your withdrawal is waiting for admin approval. You'll be notified once it's processed.`);
       } else {
-        reward(null, 'Confirming Payout', res.message || 'Transfer confirmed by bank processor.');
+        reward(null, 'Withdrawal Successful', `${res.message || 'Your payout is being processed.'} Funds will arrive in your ${methodLabel} within 24 hours.`);
       }
-      
+
       launchConfetti(20);
       loadSavedBankAccounts();
       loadHistory(1);
@@ -1110,7 +1114,12 @@ function setupPromoCodeRedemption() {
 
       updateState(res.user || res);
       render();
-      reward(res.reward || 0, 'Promo redeemed!', res.message || 'Reward added to your balance.');
+      // Show reward only if there's an actual amount, otherwise just show a success message
+      if (res.reward && res.reward > 0) {
+        reward(res.reward, 'Promo Redeemed!', res.message || 'Reward added to your balance.');
+      } else {
+        reward(null, 'Promo Redeemed!', res.message || 'Promo code applied successfully.');
+      }
       launchConfetti(30);
       promoInput.value = '';
       // Reload history to show the promo transaction

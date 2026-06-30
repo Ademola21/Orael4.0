@@ -572,12 +572,14 @@ console.error = function(...args) {
 
 <!-- ===================== REWARD MODAL ===================== -->
 <div class="modal-veil" id="modalVeil">
-  <div class="modal">
-    <svg class="m-burst" id="modalIcon" viewBox="0 0 24 24" fill="none"><path d="M12 2v4m0 12v4M2 12h4m12 0h4M5 5l3 3m8 8l3 3M19 5l-3 3M5 19l3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <h3 id="modalTitle">You won</h3>
-    <div class="m-amt" id="modalAmt">+0 ORL</div>
-    <p id="modalBody">Added to your balance.</p>
-    <button class="btn btn-primary" id="modalClose">Collect</button>
+  <div class="modal" style="max-width:340px;width:92%;padding:28px 22px 22px;">
+    <div class="m-burst-wrap" style="width:56px;height:56px;margin:0 auto 14px;border-radius:50%;background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.25);display:grid;place-items:center;">
+      <svg id="modalIcon" viewBox="0 0 24 24" fill="none" style="width:28px;height:28px;color:var(--emerald);"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h3 id="modalTitle" style="margin:0 0 8px;font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink);text-align:center;">Success</h3>
+    <div class="m-amt" id="modalAmt" style="display:none;font-family:var(--font-display);font-weight:700;font-size:28px;color:var(--gold-1);text-align:center;margin:4px 0 8px;letter-spacing:-0.02em;"></div>
+    <p id="modalBody" style="font-size:13px;color:var(--ink-mute);line-height:1.5;text-align:center;margin:0 0 20px;"></p>
+    <button class="btn btn-primary" id="modalClose" style="width:100%;">Done</button>
   </div>
 </div>
 

@@ -287,17 +287,40 @@ export function reward(amount, title, body) {
   const amtEl   = $('modalAmt');
   const bodyEl  = $('modalBody');
   const veil    = $('modalVeil');
+  const iconEl  = $('modalIcon');
+  const iconWrap = iconEl?.parentElement;
 
   if (!titleEl || !amtEl || !bodyEl || !veil) return;
 
   titleEl.textContent = title;
-  if (amount === null || amount === undefined) {
+  // Hide the amount display entirely for 0/null/undefined — showing
+  // "+0 ORL" looks unprofessional. Only show when there's an actual
+  // reward amount (> 0 or a real negative like a withdrawal deduction).
+  if (amount === null || amount === undefined || amount === 0) {
     amtEl.style.display = 'none';
+    // Use green check icon for confirmations (no reward amount)
+    if (iconEl) {
+      iconEl.innerHTML = '<path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+      iconEl.style.color = 'var(--emerald)';
+    }
+    if (iconWrap) {
+      iconWrap.style.background = 'rgba(16,185,129,0.10)';
+      iconWrap.style.borderColor = 'rgba(16,185,129,0.25)';
+    }
   } else {
     amtEl.style.display = '';
-    amtEl.textContent   = (amount >= 0 ? '+' : '') + fmtInt(amount) + ' ORL';
+    amtEl.textContent   = (amount > 0 ? '+' : '') + fmtInt(amount) + ' ORL';
+    // Use gold star icon for rewards (with amount)
+    if (iconEl) {
+      iconEl.innerHTML = '<path d="M12 2l2.4 5.8 6.6.6-5 4.3 1.5 6.5L12 16.2 6.5 19.2 8 12.7 3 8.4l6.6-.6L12 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>';
+      iconEl.style.color = 'var(--gold-1)';
+    }
+    if (iconWrap) {
+      iconWrap.style.background = 'rgba(251,191,36,0.10)';
+      iconWrap.style.borderColor = 'rgba(251,191,36,0.25)';
+    }
   }
-  bodyEl.textContent  = body || 'Added to your balance.';
+  bodyEl.textContent  = body || '';
   veil.classList.add('show');
   haptic('success');
 

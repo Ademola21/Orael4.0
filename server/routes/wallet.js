@@ -238,7 +238,7 @@ router.get('/banks', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     if (!process.env.FLW_SECRET_KEY) {
-      return res.status(503).json({ error: 'Flutterwave is not configured. Contact support.' });
+      return res.status(500).json({ error: 'Flutterwave is not configured. Contact support.' });
     }
 
     const banks = await listBanks('NG');
@@ -268,7 +268,7 @@ router.post('/resolve-account', async (req, res) => {
     }
 
     if (!process.env.FLW_SECRET_KEY) {
-      return res.status(503).json({ error: 'Flutterwave is not configured. Contact support.' });
+      return res.status(500).json({ error: 'Flutterwave is not configured. Contact support.' });
     }
 
     const result = await resolveAccount(account_number, account_bank);
@@ -349,7 +349,7 @@ router.delete('/bank-accounts/:id', async (req, res) => {
 router.post('/withdraw', async (req, res) => {
   try {
     if (!isFeatureEnabled('withdrawals_enabled')) {
-      return res.status(503).json({ error: 'Withdrawals are temporarily disabled' });
+      return res.status(400).json({ error: 'Withdrawals are temporarily disabled' });
     }
     const telegramUser = req.telegramUser;
     let user = getUser(telegramUser.id);
@@ -387,7 +387,7 @@ router.post('/withdraw', async (req, res) => {
 
     /* ── Check Flutterwave is configured for NG payouts ── */
     if ((methodKey === 'bank' || methodKey === 'airtime') && !process.env.FLW_SECRET_KEY) {
-      return res.status(503).json({ error: 'Bank/Airtime withdrawals are not configured. Contact support.' });
+      return res.status(500).json({ error: 'Bank/Airtime withdrawals are not configured. Contact support.' });
     }
 
     /* ── Validate balance + min ── */
